@@ -20,4 +20,8 @@ std::unique_ptr<Image> LoadBmp(const std::wstring& path);
 
 const wchar_t* FormatName(ImageFormat format);
 
+// WIC backend implemented in src/app/codec_wic.cpp (windowscodecs.dll).
+std::unique_ptr<Image> LoadImageWic(const std::wstring& path);
+bool SaveImageWic(const Image& image, const std::wstring& path);
+
 }  // namespace pr

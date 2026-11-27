@@ -42,6 +42,11 @@ struct ToolContext {
     CAttributeStore& attributes;
     Color foreground = palette::Black();
     Color background = palette::White();
+
+    ToolContext(Image& imageRef, COperationStock& stockRef, CAttributeStore& attributesRef,
+                Color foregroundColor = palette::Black(), Color backgroundColor = palette::White())
+        : image(imageRef), stock(stockRef), attributes(attributesRef),
+          foreground(foregroundColor), background(backgroundColor) {}
 };
 
 class CPaintTool {

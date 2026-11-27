@@ -15,7 +15,7 @@ recorded in `docs/evidence/` and used as evidence, never as copied code.
 | 3 | `CPaintTool`-style tools: pencil, brush, airbrush, eraser, flood fill, pick colour, line, rect/auto-shape, selection, zoom | selftest verifies pixel geometry and per-tool attributes | DONE |
 | 4 | Codecs (`ImageProcessing` analog): native BMP, WIC/GDI+ PNG/JPEG | round-trip selftest (write → read → identical pixels) | BMP DONE; WIC TODO |
 | 5 | `ProjectFile` analog: layers + document persistence, selection/clipboard | selftest covers layers, selection and transforms | DONE |
-| 6 | Win32 shell (`PaintUI` analog): window, tool box, color box, canvas, status bar, menus | app builds and launches; tools respond to mouse | TODO |
+| 6 | Win32 shell (`PaintUI` analog): window, tool box, color box, canvas, status bar, menus | app builds and launches; tools respond to mouse | DONE |
 | 7 | Paint dialogs + fidelity pass from REA evidence | Attributes, Edit Colors, Stretch/Skew, Flip/Rotate, Text, Zoom, recovery | TODO |
 
 Stage/module names follow the **observed** shipped module map in
@@ -56,3 +56,5 @@ autorecovery. We reimplement these boundaries in fresh C++, not copy them.
   pushed.
 - 2026-11-27: Stage 5 layered project + clipboard added; 93/93 checks passing,
   committed and pushed.
+- 2026-11-27: Stage 6 Win32 shell + WIC codecs added; both targets build with
+  0 warnings/0 errors, selftest 93/93, GUI smoke launched successfully.

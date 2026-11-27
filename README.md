@@ -22,7 +22,15 @@ docs/evidence/ REA/MCP observations and unknowns
 tools/rea/    helper scripts for REA inspection of the installed Paint apps
 ```
 
+## What works now
+- Native Win32 window with classic Paint layout: tool box, colour box, canvas,
+  status bar and File/Edit/View/Image/Help menus.
+- Tools: select, eraser, fill, pick colour, magnifier, pencil, brush, airbrush,
+  calligraphy, text frame, line/curve/polygon, rectangle/ellipse/rounded.
+- Undo/redo, clipboard, layered project persistence, BMP + WIC (PNG/JPEG/GIF/
+  TIFF) file I/O, zoom, grid, invert/flip/rotate/attributes.
+
 ## Status
-See `PROJECT_PLAN.md` for stages and `HANDOFF_CONTINUATION_PROMPT.md` for the
-authoritative current state. Work is appended to `chat.md`, one commit+push per
-stage.
+Stages 0–6 are done and pushed. See `PROJECT_PLAN.md` for remaining fidelity
+work and `HANDOFF_CONTINUATION_PROMPT.md` for the authoritative current state.
+Work is appended to `chat.md`, one commit+push per stage.

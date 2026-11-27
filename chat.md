@@ -101,6 +101,30 @@ selection; the Win32 stage will map it to `CF_DIB`.
 checks, 0 FAIL** (14 new project/clipboard checks, including save → load →
 flatten pixel comparison and cut/paste).
 
-**Commit:** bb180bf3d4bda12de71d954b488564a4c9e24978
+**Commit:** bb180bf3d4bda12de71d954b488564a4c9e24978 (`aca5be6`)
+
+## 2026-11-27 — Session 5 — Stage 6: Win32 Paint shell + WIC codecs
+
+**Change:** added `src/app/main.cpp` (native Win32 `PaintUI` analog) and
+`src/app/codec_wic.cpp` (PNG/JPEG/GIF/TIFF/BMP through public WIC APIs in
+`windowscodecs.dll`, same DLL approach as the Word rebuild, no cloud/AI code).
+The shell has the classic Paint layout: tool box down the left (18 tools from
+the REA list), 28-colour colour box with foreground/background swatches,
+GDI canvas with zoom 100–800% and optional grid, status bar with tool name /
+cursor coordinates / image size, and File/Edit/View/Image/Help menus with the
+observed command set (New/Open/Save/Save As, Undo/Redo, Cut/Copy/Paste, Clear
+Image, Select All, Invert, Flip, Rotate 90°, Attributes, About). Mouse events
+drive the `CPaintTool` state machine; whole-image commands commit undoable
+`SnapshotOperation`s. `build.ps1` now builds both `pr_selftest.exe` and
+`paintrebuild.exe`; MSVC links user32/gdi32/comctl32/comdlg32/shell32/ole32/
+windowscodecs/uuid. `NOMINMAX` added before Windows headers to keep `std::max`.
+
+**Verification:** MSVC build 0 warnings/0 errors for both targets; selftest
+93 checks, 0 FAIL; GUI smoke: process stayed alive with window title
+`PaintRebuild - Untitled`, then was stopped. No Microsoft Paint binary or
+asset is loaded at runtime.
+
+**Commit:** 47533081f440b73c7676ee0b6dad93e868c8ab69
+
 
 

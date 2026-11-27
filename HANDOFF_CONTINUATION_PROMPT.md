@@ -31,8 +31,9 @@ push).
 
 ## Build & verify
 ```powershell
-powershell -ExecutionPolicy Bypass -File build.ps1
-build\pr_selftest.exe
+powershell -ExecutionPolicy Bypass -File build.ps1   # builds selftest + app
+build\pr_selftest.exe                                # 93 checks, 0 FAIL
+build\paintrebuild.exe                              # GUI smoke verified
 powershell -ExecutionPolicy Bypass -File run.ps1
 ```
 
