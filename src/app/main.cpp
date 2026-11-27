@@ -98,6 +98,7 @@ struct AppState {
     int cursorY = -1;
     bool showGrid = false;
     bool drawing = false;
+    int resizeEdge = 0; // 0=none, 1=right, 2=bottom, 3=corner
     std::wstring filePath;
     HWND hwnd = nullptr;
 };
@@ -105,6 +106,7 @@ struct AppState {
 AppState g;
 ShapeKind g_shapeKind = ShapeKind::Rectangle;
 bool g_shapeFilled = false;
+int g_resizeOrigW = 0, g_resizeOrigH = 0, g_resizeStartX = 0, g_resizeStartY = 0;
 
 void WholeImageOperation(OperationKind kind, const std::function<void(Image&)>& mutate);
 
@@ -210,6 +212,26 @@ pr::Point ToImagePoint(int x, int y) {
 }
 
 void FillRectValue(HDC hdc, RECT rect, HBRUSH brush) { FillRect(hdc, &rect, brush); }
+
+enum class ResizeEdge { None, Right, Bottom, Corner };
+ResizeEdge CanvasResizeHit(int x, int y, const RECT& canvas) {
+    const int w = g.image->width() * g.zoom, h = g.image->height() * g.zoom;
+    const int rx = canvas.left + w, by = canvas.top + h;
+    auto hit = [&](int cx, int cy) { return x >= cx - 4 && x <= cx + 4 && y >= cy - 4 && y <= cy + 4; };
+    if (hit(rx, by)) return ResizeEdge::Corner;
+    if (hit(rx, canvas.top + h / 2)) return ResizeEdge::Right;
+    if (hit(canvas.left + w / 2, by)) return ResizeEdge::Bottom;
+    return ResizeEdge::None;
+}
+void DrawCanvasResizeHandles(HDC hdc, const RECT& canvas) {
+    const int w = g.image->width() * g.zoom, h = g.image->height() * g.zoom;
+    const POINT pts[] = {{canvas.left + w, canvas.top + h / 2}, {canvas.left + w / 2, canvas.top + h}, {canvas.left + w, canvas.top + h}};
+    for (auto p : pts) {
+        RECT r{p.x - 3, p.y - 3, p.x + 4, p.y + 4};
+        FillRect(hdc, &r, static_cast<HBRUSH>(GetStockObject(WHITE_BRUSH)));
+        FrameRect(hdc, &r, static_cast<HBRUSH>(GetStockObject(BLACK_BRUSH)));
+    }
+}
 
 void DrawCanvas(HDC hdc, const RECT& canvas) {
     const int w = g.image->width();
@@ -607,6 +629,7 @@ void Paint(HWND hwnd) {
     const RECT canvas = CanvasRect();
     DrawCanvas(mem, canvas);
     DrawRuler(mem, canvas);
+    DrawCanvasResizeHandles(mem, canvas);
     DrawCommandBar(mem);
     DrawLeftPanel(mem);
     DrawStatus(mem);
@@ -1046,6 +1069,17 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam) 
             if (HandleStatusBarClick(x, y)) return 0;
             if (HandleCommandBarClick(x, y, false)) return 0;
             if (HandleLeftPanelClick(x, y)) return 0;
+            {
+                const RECT canvas = CanvasRect();
+                const ResizeEdge edge = CanvasResizeHit(x, y, canvas);
+                if (edge != ResizeEdge::None) {
+                    g.resizeEdge = (edge == ResizeEdge::Right) ? 1 : (edge == ResizeEdge::Bottom) ? 2 : 3;
+                    g_resizeOrigW = g.image->width(); g_resizeOrigH = g.image->height();
+                    g_resizeStartX = x; g_resizeStartY = y;
+                    g.drawing = true; SetCapture(hwnd);
+                    return 0;
+                }
+            }
             const pr::Point p = ToImagePoint(x, y);
             if (p.x < 0 || p.y < 0 || p.x >= g.image->width() || p.y >= g.image->height())
                 return 0;
@@ -1079,6 +1113,10 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam) 
         case WM_MOUSEMOVE: {
             const int x = GET_X_LPARAM(lParam);
             const int y = GET_Y_LPARAM(lParam);
+            if (g.drawing && g.resizeEdge != 0) {
+                SetCursor(LoadCursor(nullptr, g.resizeEdge == 1 ? IDC_SIZEWE : g.resizeEdge == 2 ? IDC_SIZENS : IDC_SIZENWSE));
+                return 0;
+            }
             const pr::Point p = ToImagePoint(x, y);
             if (p.x != g.cursorX || p.y != g.cursorY) {
                 g.cursorX = p.x;
@@ -1089,6 +1127,21 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam) 
             return 0;
         }
         case WM_LBUTTONUP: {
+            if (g.drawing && g.resizeEdge != 0) {
+                const int dx = (GET_X_LPARAM(lParam) - g_resizeStartX) / std::max(1, g.zoom);
+                const int dy = (GET_Y_LPARAM(lParam) - g_resizeStartY) / std::max(1, g.zoom);
+                int nw = g_resizeOrigW, nh = g_resizeOrigH;
+                if (g.resizeEdge == 1 || g.resizeEdge == 3) nw = std::max(1, g_resizeOrigW + dx);
+                if (g.resizeEdge == 2 || g.resizeEdge == 3) nh = std::max(1, g_resizeOrigH + dy);
+                if (nw != g.image->width() || nh != g.image->height()) {
+                    WholeImageOperation(OperationKind::Resize, [&](Image& image) {
+                        image.Resize(Size{nw, nh}, ResizeMode::Nearest, ResizeDirection::Both);
+                    });
+                }
+                g.resizeEdge = 0; g.drawing = false; ReleaseCapture();
+                InvalidateRect(hwnd, nullptr, TRUE);
+                return 0;
+            }
             if (g.drawing && g.tool) {
                 const pr::Point p = ToImagePoint(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
                 g.tool->OnStylusUp(p);

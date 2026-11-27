@@ -497,3 +497,15 @@ as circles to match Paint 11.
 
 **Commit:** e4c891eaa4f8349843cd15b0f064fd8e13e69a50
 
+
+
+## 2026-11-27 ? Session 26 ? Canvas resize handles
+
+**Change:** added Paint-style canvas resize nubs (right, bottom, corner) with
+drag-to-resize as a single undoable Resize operation. Handles draw at image edge;
+cursor feedback during drag.
+
+**Verification:** MSVC build 0 warnings/0 errors; selftest 103 checks, 0 FAIL.
+
+**Commit:** 9f121690de9d11bdd6a18a33dfcddb4f0538da1b
+
