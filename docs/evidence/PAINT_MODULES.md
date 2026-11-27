@@ -87,6 +87,28 @@ commit them. Our `src/core/operation.h` mirrors this split.
 `IsWin30Dib`, WIC/GDI+ conversions (`CreateWicBitmap`, `CreateHBitmap`, `ToColor`,
 `WithAlpha`).
 
+## PaintUI.winmd type inventory (REA CLI, 2026-11-27)
+The MCP response could not carry the complete winmd member inventory (10 MiB
+transport budget), so the REA CLI was used on the **vendored** copy:
+`rea inspect-managed-members reference\paint-11.2609.441.0\PaintUI.winmd
+--detail summary --evidence-bundle <path>`. Parent evidence
+`ev_87e30a63adcf9e19b82eef55126af169a685bcb6270df94f16b4b6f1c77c35a5`
+(complete: 588 TypeDefs, 4185 MethodDefs, 2128 properties, MVID
+`9f3e7b49-189c-4939-8e08-1371ae93e3b0`). Observations relevant to our shell:
+- Command/UI surfaces: `PaintCommand`, `PaintCommandOrigin`, `CanvasAction`,
+  `CanvasActionsViewModel`, `CanvasContextMenuViewModel`, `CommandKeyboardAccelerator`.
+- Toolbars/tool state: `ToolsToolbar`, `ToolsViewModel`, `ToolKind`,
+  `ColorsToolbar`, `ColorsViewModel`, `ShapesToolbar`, `SelectionToolbar`,
+  `TextToolbar`, `BrushSize`, `BrushSizeSlider`, `ZoomSlider`, `ZoomMode`,
+  `Ruler`, `StatusBar`, `StatusBarViewModel`, `Canvas`, `CanvasThumbnail`.
+- Dialogs: `EditColorsDialog`, `ResizeAndSkewDialog`, `RotateCustomDialog`,
+  `ContentDialogService`, `MessageBoxDialog`.
+**Inference:** the command set and toolbar/dialog layout we implemented matches
+the reference UI categories. Names were read from metadata only; no CIL body
+was executed and no command ID values are claimed. Cloud/AI types present in
+the metadata (e.g. `GenerativeFillCommandBar`) are observation-only and remain
+excluded from our implementation.
+
 ## Explicitly excluded by user instruction (2026-11-27)
 No licence or cloud modules are copied or reimplemented. The installed app also
 contains `AIServices.dll`, `AIServicesCS.dll`, `AIStore.dll`,
@@ -98,6 +120,7 @@ LICENSE/NOTICE file from a sibling project is carried in this repo.
 ## Unknowns (do not claim without evidence)
 - Exact default thickness/tolerance values and palette colors are not in the
   export table; they must come from resources or runtime observation.
-- The `PaintUI.winmd` type names were not yet paged; command/resource IDs remain
-  unknown until `inspect_analysis_view` on `ev_a1d7...` is read.
+- `PaintUI.winmd` **type names** are now inventoried above via the REA CLI;
+  exact numeric command/resource IDs and CIL behaviour remain unknown (no
+  decompilation or runtime observation was performed).
 - Version 6.2410 (MSPaint bridge) module layout not yet compared.

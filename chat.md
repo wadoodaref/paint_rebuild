@@ -238,7 +238,29 @@ in the Win32 stage where GDI is available.
 **Verification:** MSVC build 0 warnings/0 errors (both targets); selftest 93
 checks, 0 FAIL; GUI smoke launched with title `PaintRebuild - Untitled`.
 
-**Commit:** 01f497f010573d2850aa6f8b3e9c1ff499aa60eb
+**Commit:** 01f497f010573d2850aa6f8b3e9c1ff499aa60eb (`0dd5254`)
+
+## 2026-11-27 — Session 12 — PaintUI.winmd type inventory (last research item)
+
+**Change:** the MCP transport could not carry the complete winmd member
+inventory, so the installed `rea` CLI was run against the **vendored** copy:
+`rea inspect-managed-members ...\PaintUI.winmd --detail summary
+--evidence-bundle <path>`. Parent evidence
+`ev_87e30a63adcf9e19b82eef55126af169a685bcb6270df94f16b4b6f1c77c35a5`
+(588 TypeDefs, 4185 methods, 2128 properties). Recorded the observed UI/command
+types (`PaintCommand`, `CanvasAction`, `ToolsToolbar`, `ColorsToolbar`,
+`ResizeAndSkewDialog`, `RotateCustomDialog`, `StatusBar`, `ZoomSlider`, ...)
+in `docs/evidence/PAINT_MODULES.md`, separating observation from inference and
+marking numeric command IDs / CIL behaviour as unknown. Cloud/AI types seen in
+metadata remain observation-only and excluded. Handoff updated: no functional
+gap remains.
+
+**Verification:** REA CLI completed with coverage `complete`; no source or
+application code changed, so the build/selftest/GUI results from Session 11
+still stand.
+
+**Commit:** e01acd823f13a96f07a9c3a74f299ca6b62c1ca6
+
 
 
 

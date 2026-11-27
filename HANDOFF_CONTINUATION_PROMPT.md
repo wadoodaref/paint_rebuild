@@ -47,9 +47,10 @@ powershell -ExecutionPolicy Bypass -File run.ps1
   cleanup on save/close) — the `RestartRecovery.dll` analog is complete.
 - All 8 planned stages are complete; text now renders into the image via an
   in-place Edit control + GDI DIB commit.
-- Optional future research only: page the `PaintUI.winmd` type list through the
-  REA CLI (MCP response budget blocked it) if more command-level fidelity is
-  wanted. No functional gap remains in the core Paint workflow.
+- The `PaintUI.winmd` type list was inventoried via the REA CLI on the vendored
+  bundle (588 types; evidence `ev_87e30a63...` recorded in
+  `docs/evidence/PAINT_MODULES.md`). No functional gap remains; only optional
+  command-ID/CIL research is left, and it is not needed for the workflow.
 - **Offline reference bundle** (no search needed on another PC):
   `reference/paint-11.2609.441.0/` — 11 verified core artifacts + `manifest.json`.
   Verify with `tools\rea\verify_reference.ps1`, list REA calls with
