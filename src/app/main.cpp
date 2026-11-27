@@ -20,6 +20,7 @@
 #include "clipboard_win.h"
 #include "dialogs_win.h"
 #include "extra_ui.h"
+#include "print_win.h"
 #include "recovery.h"
 #include "text_render.h"
 #include "../core/image.h"
@@ -184,6 +185,7 @@ void NewDocument(int width, int height) {
     g.cursorX = g.cursorY = -1;
     RebuildTool();
     UpdateThumbnailImage(g.image.get());
+    UpdatePrintPreviewImage(g.image.get());
     InvalidateRect(g.hwnd, nullptr, TRUE);
 }
 
@@ -530,6 +532,7 @@ void SelectFile(bool save) {
             g.filePath = p;
             RebuildTool();
             UpdateThumbnailImage(g.image.get());
+    UpdatePrintPreviewImage(g.image.get());
             SetTitle();
             InvalidateRect(g.hwnd, nullptr, TRUE);
         } else {
@@ -580,6 +583,8 @@ void DoCommand(WORD id) {
         case 104: PostQuitMessage(0); break;
         case 105: SetAsWallpaper(g.image.get(), false); break;
         case 106: SetAsWallpaper(g.image.get(), true); break;
+        case 107: PrintImage(g.hwnd, *g.image); break;
+        case 108: TogglePrintPreview(g.hwnd, g.image.get()); break;
         case 309: ToggleFullScreen(g.hwnd); break;
         case 310: ToggleThumbnail(g.hwnd, g.image.get()); break;
         case 200:
@@ -715,6 +720,9 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam) 
             AppendMenuW(file, MF_SEPARATOR, 0, nullptr);
             AppendMenuW(file, MF_STRING, 105, L"Set as Wallpaper (stretched)");
             AppendMenuW(file, MF_STRING, 106, L"Set as Wallpaper (tiled)");
+            AppendMenuW(file, MF_SEPARATOR, 0, nullptr);
+            AppendMenuW(file, MF_STRING, 107, L"&Print...");
+            AppendMenuW(file, MF_STRING, 108, L"Print &Preview");
             AppendMenuW(file, MF_SEPARATOR, 0, nullptr);
             AppendMenuW(file, MF_STRING, 104, L"E&xit");
             HMENU edit = CreatePopupMenu();

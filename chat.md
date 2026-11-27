@@ -350,7 +350,22 @@ Esc handling; `advapi32.lib` added for registry calls.
 **Verification:** MSVC build 0 warnings/0 errors (both targets); selftest 100
 checks, 0 FAIL; GUI smoke launched with title `PaintRebuild - Untitled`.
 
-**Commit:** d37d7cd365684369a68b0b677b9b2ded55bebc5a
+**Commit:** d37d7cd365684369a68b0b677b9b2ded55bebc5a (`a260b10`)
+
+## 2026-11-27 — Session 18 — Print and Print Preview
+
+**Change:** added `src/app/print_win.cpp/.h` implementing GDI printing
+(`PRINTDLGW` → printer DC, `StartDoc`/`StartPage`, aspect-preserving
+`StretchDIBits` with quarter-inch margins, `EndPage`/`EndDoc`) and a modeless
+print-preview window with a page sheet, scaled image and "Page 1 of 1" label —
+the `CanvasPrintPreview` / `TracePrint` / `TracePrintPreview` analog. Wired
+File > Print... and File > Print Preview.
+
+**Verification:** MSVC build 0 warnings/0 errors (both targets); selftest 100
+checks, 0 FAIL; GUI smoke launched with title `PaintRebuild - Untitled`.
+
+**Commit:** aa11ca46c9bf50c8d4652f96849445ce924fedcc
+
 
 
 
