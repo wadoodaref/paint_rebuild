@@ -79,13 +79,13 @@ try {
         $src = ($testSrc + $coreSrc + $toolSrc) -join ' '
         Build-Step 'selftest' 'pr_selftest.exe' "call `"$vcvars`" >nul && cl $common $src /Fe:pr_selftest.exe /link /SUBSYSTEM:CONSOLE"
         $appAll = ($appSrc + $coreSrc + $toolSrc) -join ' '
-        Build-Step 'app' 'paintrebuild.exe' "call `"$vcvars`" >nul && cl $common $appAll /Fe:paintrebuild.exe /link /SUBSYSTEM:WINDOWS user32.lib gdi32.lib comctl32.lib comdlg32.lib shell32.lib ole32.lib advapi32.lib windowscodecs.lib uuid.lib"
+        Build-Step 'app' 'paintrebuild.exe' "call `"$vcvars`" >nul && cl $common $appAll /Fe:paintrebuild.exe /link /SUBSYSTEM:WINDOWS user32.lib gdi32.lib comctl32.lib comdlg32.lib shell32.lib ole32.lib advapi32.lib windowscodecs.lib msimg32.lib uuid.lib"
     } else {
         $common = '-std=c++17 -O2 -Wall -municode -DUNICODE -D_UNICODE -D_WIN32_WINNT=0x0602 -DWINVER=0x0602 -static-libgcc -static-libstdc++'
         $src = ($testSrc + $coreSrc + $toolSrc) -join ' '
         Build-Step 'selftest' 'pr_selftest.exe' "& `"$mingw`" $common $src -o pr_selftest.exe"
         $appAll = ($appSrc + $coreSrc + $toolSrc) -join ' '
-        Build-Step 'app' 'paintrebuild.exe' "& `"$mingw`" $common $appAll -o paintrebuild.exe -mwindows -luser32 -lgdi32 -lcomctl32 -lcomdlg32 -lshell32 -lole32 -ladvapi32 -lwindowscodecs -luuid"
+        Build-Step 'app' 'paintrebuild.exe' "& `"$mingw`" $common $appAll -o paintrebuild.exe -mwindows -luser32 -lgdi32 -lcomctl32 -lcomdlg32 -lshell32 -lole32 -ladvapi32 -lwindowscodecs -lmsimg32 -luuid"
     }
 } finally {
     Pop-Location

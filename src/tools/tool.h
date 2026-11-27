@@ -187,8 +187,8 @@ public:
     void OnStylusUp(const Point&) override {}
 };
 
-std::unique_ptr<CPaintTool> CreatePaintTool(ToolContext& context, PaintToolKind kind);
-std::unique_ptr<CPaintTool> CreateAutoShapeTool(ToolContext& context, ShapeKind shape);
+std::unique_ptr<CPaintTool> CreatePaintTool(ToolContext& context, PaintToolKind kind, bool filled = false);
+std::unique_ptr<CPaintTool> CreateAutoShapeTool(ToolContext& context, ShapeKind shape, bool filled = false);
 const char* ToolName(PaintToolKind kind);
 
 }  // namespace pr

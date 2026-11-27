@@ -253,13 +253,13 @@ void TextTool::OnStylusDown(const Point& p) {
     modified_ = true;
 }
 
-std::unique_ptr<CPaintTool> CreateAutoShapeTool(ToolContext& context, ShapeKind shape) {
-    auto tool = std::make_unique<CRectTool>(context, PaintToolKind::AutoShape, false);
+std::unique_ptr<CPaintTool> CreateAutoShapeTool(ToolContext& context, ShapeKind shape, bool filled) {
+    auto tool = std::make_unique<CRectTool>(context, PaintToolKind::AutoShape, filled);
     tool->SetShape(shape);
     return tool;
 }
 
-std::unique_ptr<CPaintTool> CreatePaintTool(ToolContext& context, PaintToolKind kind) {
+std::unique_ptr<CPaintTool> CreatePaintTool(ToolContext& context, PaintToolKind kind, bool filled) {
     switch (kind) {
         case PaintToolKind::Pencil:
             return std::make_unique<CStrokeTool>(context, kind, false);
@@ -287,13 +287,13 @@ std::unique_ptr<CPaintTool> CreatePaintTool(ToolContext& context, PaintToolKind 
         case PaintToolKind::Polygon:
             return std::make_unique<CLineTool>(context);
         case PaintToolKind::Rectangle:
-            return std::make_unique<CRectTool>(context, kind, false, ShapeKind::Rectangle);
+            return std::make_unique<CRectTool>(context, kind, filled, ShapeKind::Rectangle);
         case PaintToolKind::RoundedRectangle:
-            return std::make_unique<CRectTool>(context, kind, false, ShapeKind::RoundedRectangle);
+            return std::make_unique<CRectTool>(context, kind, filled, ShapeKind::RoundedRectangle);
         case PaintToolKind::AutoShape:
-            return std::make_unique<CRectTool>(context, kind, false);
+            return std::make_unique<CRectTool>(context, kind, filled);
         case PaintToolKind::Ellipse:
-            return std::make_unique<CRectTool>(context, kind, false, ShapeKind::Ellipse);
+            return std::make_unique<CRectTool>(context, kind, filled, ShapeKind::Ellipse);
         case PaintToolKind::Selection:
         case PaintToolKind::FreeFormSelection:
             return std::make_unique<SelectionTool>(context);

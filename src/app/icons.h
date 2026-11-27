@@ -13,7 +13,8 @@ constexpr const char* kToolIconFiles[18] = {
     "curve.png", "polygon.png", "rectangle.png", "oval.png", "rounded_rect.png", "tools.png"};
 
 // Lazily loads and caches the icon; returns nullptr when the asset is absent.
-Image* GetToolIcon(int index);
+Image* GetToolIcon(int index);          // by tool index (0-17)
+Image* GetIcon(const char* fileName);  // by filename, e.g. "rotate.png"
 void DrawToolIcon(HDC hdc, const Image& icon, int x, int y, int size);
 
 }  // namespace pr

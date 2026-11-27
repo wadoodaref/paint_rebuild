@@ -446,3 +446,28 @@ targets); selftest 103 checks, 0 FAIL; GUI smoke launched with title
 
 
 
+
+
+## 2026-11-27 ? Session 23 ? Paint 11 command bar layout (exact UI recreate pass)
+
+**Change:** rebuilt the Win32 shell to match the Paint 11 command bar structure
+observed via UIA on the installed `Microsoft.Paint_11.2609.441.0` app. Replaced
+the old left toolbox + bottom palette + simple ribbon with: a top command bar
+(grouped Selection/Image/Tools/Brushes/Shapes/Size/Colors), a left vertical
+Size slider panel, and a Paint 11-style bottom status bar (cursor, canvas size,
+fit-to-window, zoom percent, zoom slider, zoom +/-). Tools are 2 rows x 3
+(Pencil/Fill/Text, Eraser/Color picker/Magnifier) matching the source. The
+shape grid shows 23 shapes with source icons; Color 1/2, 10x2 palette and Edit
+Colors live in the command bar. Vendored 31 additional theme-light SVG/PNG
+assets and rendered 49 total icons; icons now draw with premultiplied alpha
+(AlphaBlend). Added msimg32 to build.
+
+**Scope/limits:** Copilot, Layers, BG removal, Share, sign-in excluded per
+project rules. Layout is Win32/GDI faithful to Paint 11 grouping/workflow; WinUI3
+rounded visuals/animations are not pixel-identical.
+
+**Verification:** MSVC build 0 warnings/0 errors (both targets); selftest 103
+checks, 0 FAIL; GUI smoke launched `PaintRebuild - Untitled`.
+
+**Commit:** 9ed0011142dc84450594def92aa19b5442b2753a
+

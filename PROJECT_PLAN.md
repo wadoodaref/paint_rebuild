@@ -80,3 +80,7 @@ autorecovery. We reimplement these boundaries in fresh C++, not copy them.
 - 2026-11-27 (workflow complete): wallpaper, full screen, thumbnail, GDI print
   + print preview, exact 28-colour palette and canvas context menu added;
   build clean, selftest 103/103, GUI smoke OK. Planned workflow: 100%.
+- 2026-11-27 (exact UI pass): rebuilt Win32 shell to Paint 11 command-bar layout
+  observed via UIA (Selection/Image/Tools/Brushes/Shapes/Size/Colors groups,
+  left Size/Opacity sliders, bottom status bar with zoom controls); 49 source
+  icons with alpha blending; build clean, selftest 103/103, GUI smoke OK.
