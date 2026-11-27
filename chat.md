@@ -509,3 +509,16 @@ cursor feedback during drag.
 
 **Commit:** 9f121690de9d11bdd6a18a33dfcddb4f0538da1b
 
+
+
+## 2026-11-27 ? Session 27 ? Command bar polish and Paint 11 fidelity
+
+**Change:** Selection group collapsed to a single Select dropdown (Rectangular/
+Free-form) matching Paint 11. Shape Outline/Fill now open menus (outline size;
+no fill/solid fill). Gray workspace background + canvas shadow. Color 1/2 drawn
+as overlapping swatches.
+
+**Verification:** MSVC build 0 warnings/0 errors; selftest 103 checks, 0 FAIL.
+
+**Commit:** 7cacf0f35e4b4380d0d50b53bc28170ab2bc3e7d
+

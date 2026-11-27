@@ -340,11 +340,12 @@ CommandLayout BuildCommandLayout() {
         L.buttons.push_back(b);
     };
 
-    // Selection group
+    // Selection group (Paint 11: single Select button)
     const int selLeft = x;
-    addBtn(x + 10, top + 8, 44, 62, 800, L"Select", "select.png", g.toolKind == PaintToolKind::Selection);
-    addBtn(x + 58, top + 8, 44, 62, 801, L"Free-form", "freeform.png", g.toolKind == PaintToolKind::FreeFormSelection);
-    x += 112;
+    const bool selActive = (g.toolKind == PaintToolKind::Selection || g.toolKind == PaintToolKind::FreeFormSelection);
+    const char* selIcon = (g.toolKind == PaintToolKind::FreeFormSelection) ? "freeform.png" : "select.png";
+    addBtn(x + 10, top + 8, 56, 62, 9004, L"Select", selIcon, selActive);
+    x += 76;
 
     // Image group (matches Paint 11: Crop, Rotate, Flip, Resize and skew; BG removal excluded)
     const int imgLeft = x;
@@ -457,9 +458,9 @@ void DrawCommandBar(HDC hdc) {
 
     // Group separators and labels
     struct GL { const wchar_t* n; int l; int r; } groups[] = {
-        {L"Selection", 8, 120}, {L"Image", 122, 294}, {L"Tools", 296, 430},
-        {L"Brushes", 432, 506}, {L"Shapes", 508, 806}, {L"Size", 808, 866},
-        {L"Colors", 868, 1200},
+        {L"Selection", 8, 84}, {L"Image", 86, 258}, {L"Tools", 260, 394},
+        {L"Brushes", 396, 470}, {L"Shapes", 472, 770}, {L"Size", 772, 830},
+        {L"Colors", 832, 1164},
     };
     for (auto& g_ : groups) {
         DrawVSeparator(hdc, g_.r, top, top + h);
@@ -490,8 +491,22 @@ void DrawCommandBar(HDC hdc) {
         SetTextColor(hdc, RGB(60,60,60));
         DrawTextW(hdc, lbl, -1, &lr, DT_CENTER | DT_SINGLELINE);
     };
-    drawSwatch(L.color1, g.foreground, true, L"Color 1");
-    drawSwatch(L.color2, g.background, false, L"Color 2");
+    // Overlapping Color 1 / Color 2 like Paint
+    {
+        RECT r2 = L.color2; OffsetRect(&r2, 8, -6);
+        HBRUSH b2 = CreateSolidBrush(RGB(Red(g.background), Green(g.background), Blue(g.background)));
+        FillRectValue(hdc, r2, b2); DeleteObject(b2); FrameRect(hdc, &r2, static_cast<HBRUSH>(GetStockObject(GRAY_BRUSH)));
+        HBRUSH b1 = CreateSolidBrush(RGB(Red(g.foreground), Green(g.foreground), Blue(g.foreground)));
+        FillRectValue(hdc, L.color1, b1); DeleteObject(b1);
+        HPEN sel = CreatePen(PS_SOLID, 2, RGB(0,120,215)); HGDIOBJ op=SelectObject(hdc,sel); HGDIOBJ ob=SelectObject(hdc,GetStockObject(NULL_BRUSH));
+        Rectangle(hdc, L.color1.left, L.color1.top, L.color1.right, L.color1.bottom);
+        SelectObject(hdc,ob); SelectObject(hdc,op); DeleteObject(sel);
+        SetBkMode(hdc, TRANSPARENT); SetTextColor(hdc, RGB(60,60,60));
+        RECT l1{L.color1.left-4, L.color1.bottom, L.color1.right+14, L.color1.bottom+14};
+        DrawTextW(hdc, L"Color 1", -1, &l1, DT_CENTER | DT_SINGLELINE);
+        RECT l2{r2.left-4, r2.bottom, r2.right+14, r2.bottom+14};
+        DrawTextW(hdc, L"Color 2", -1, &l2, DT_CENTER | DT_SINGLELINE);
+    }
 
     for (int i = 0; i < 20 && i < static_cast<int>(L.palette.size()); ++i) {
         RECT r = L.palette[i];
@@ -625,8 +640,16 @@ void Paint(HWND hwnd) {
     HDC mem = CreateCompatibleDC(hdc);
     HBITMAP bitmap = CreateCompatibleBitmap(hdc, client.right, client.bottom);
     HGDIOBJ old = SelectObject(mem, bitmap);
-    FillRect(mem, &client, static_cast<HBRUSH>(GetStockObject(WHITE_BRUSH)));
+    HBRUSH ws = CreateSolidBrush(RGB(242, 242, 242));
+    FillRect(mem, &client, ws); DeleteObject(ws);
     const RECT canvas = CanvasRect();
+    // canvas shadow/border
+    {
+        const int cw = g.image->width() * g.zoom, ch = g.image->height() * g.zoom;
+        RECT shadow{canvas.left + 3, canvas.top + 3, canvas.left + cw + 3, canvas.top + ch + 3};
+        HBRUSH sh = CreateSolidBrush(RGB(210,210,210));
+        FillRect(mem, &shadow, sh); DeleteObject(sh);
+    }
     DrawCanvas(mem, canvas);
     DrawRuler(mem, canvas);
     DrawCanvasResizeHandles(mem, canvas);
@@ -760,8 +783,44 @@ void DoCommand(WORD id) {
         InvalidateRect(g.hwnd, nullptr, TRUE);
         return;
     }
-    if (id == 9001) { g_shapeFilled = false; RebuildTool(); InvalidateRect(g.hwnd, nullptr, TRUE); return; }
-    if (id == 9002) { g_shapeFilled = true; RebuildTool(); InvalidateRect(g.hwnd, nullptr, TRUE); return; }
+    if (id == 9001) {
+        HMENU m = CreatePopupMenu();
+        AppendMenuW(m, MF_STRING, 9201, L"No outline");
+        AppendMenuW(m, MF_STRING, 9202, L"Solid color");
+        AppendMenuW(m, MF_SEPARATOR, 0, nullptr);
+        AppendMenuW(m, MF_STRING, 9203, L"1px"); AppendMenuW(m, MF_STRING, 9204, L"3px");
+        AppendMenuW(m, MF_STRING, 9205, L"5px"); AppendMenuW(m, MF_STRING, 9206, L"8px");
+        POINT pt; GetCursorPos(&pt);
+        int sel = TrackPopupMenuEx(m, TPM_RETURNCMD | TPM_LEFTALIGN | TPM_TOPALIGN, pt.x, pt.y, g.hwnd, nullptr);
+        DestroyMenu(m);
+        if (sel == 9203 || sel == 9204 || sel == 9205 || sel == 9206) {
+            int t = sel == 9203 ? 1 : sel == 9204 ? 3 : sel == 9205 ? 5 : 8;
+            g.attributes.SetValue(1, t); if (g.tool) g.tool->SetThickness(static_cast<unsigned>(t));
+            InvalidateRect(g.hwnd, nullptr, TRUE);
+        }
+        return;
+    }
+    if (id == 9002) {
+        HMENU m = CreatePopupMenu();
+        AppendMenuW(m, MF_STRING, 9211, L"No fill");
+        AppendMenuW(m, MF_STRING, 9212, L"Solid color");
+        POINT pt; GetCursorPos(&pt);
+        int sel = TrackPopupMenuEx(m, TPM_RETURNCMD | TPM_LEFTALIGN | TPM_TOPALIGN, pt.x, pt.y, g.hwnd, nullptr);
+        DestroyMenu(m);
+        if (sel == 9211) { g_shapeFilled = false; RebuildTool(); InvalidateRect(g.hwnd, nullptr, TRUE); }
+        if (sel == 9212) { g_shapeFilled = true; RebuildTool(); InvalidateRect(g.hwnd, nullptr, TRUE); }
+        return;
+    }
+    if (id == 9004) {
+        HMENU m = CreatePopupMenu();
+        AppendMenuW(m, MF_STRING, 800, L"Rectangular selection");
+        AppendMenuW(m, MF_STRING, 801, L"Free-form selection");
+        POINT pt; GetCursorPos(&pt);
+        int sel = TrackPopupMenuEx(m, TPM_RETURNCMD | TPM_LEFTALIGN | TPM_TOPALIGN, pt.x, pt.y, g.hwnd, nullptr);
+        DestroyMenu(m);
+        if (sel) DoCommand(static_cast<WORD>(sel));
+        return;
+    }
     if (id == 9003) {
         HMENU m = CreatePopupMenu();
         const int sizes[] = {1,3,5,8};
