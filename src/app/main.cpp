@@ -53,6 +53,7 @@ struct AppState {
 };
 
 AppState g;
+ShapeKind g_shapeKind = ShapeKind::Rectangle;
 
 void WholeImageOperation(OperationKind kind, const std::function<void(Image&)>& mutate);
 
@@ -109,7 +110,9 @@ const std::array<Color, 28> kPalette = {
 void RebuildTool() {
     g.context = std::make_unique<ToolContext>(*g.image, g.stock, g.attributes,
                                               g.foreground, g.background);
-    g.tool = CreatePaintTool(*g.context, g.toolKind);
+    g.tool = g.toolKind == PaintToolKind::AutoShape
+                 ? CreateAutoShapeTool(*g.context, g_shapeKind)
+                 : CreatePaintTool(*g.context, g.toolKind);
     if (g.tool) {
         int thickness = 1;
         if (g.attributes.GetValue(1, thickness)) g.tool->SetThickness(thickness);
@@ -262,9 +265,11 @@ void DrawStatus(HDC hdc) {
     DeleteObject(face);
     std::wstring text;
     if (g.tool) {
-        const int w = static_cast<int>(std::strlen(ToolName(g.tool->Kind())));
+        const char* name = g.toolKind == PaintToolKind::AutoShape ? ShapeName(g_shapeKind)
+                                                                  : ToolName(g.tool->Kind());
+        const int w = static_cast<int>(std::strlen(name));
         text.assign(w, L' ');
-        for (int i = 0; i < w; ++i) text[i] = static_cast<wchar_t>(ToolName(g.tool->Kind())[i]);
+        for (int i = 0; i < w; ++i) text[i] = static_cast<wchar_t>(name[i]);
     }
     const std::wstring coords = L"  |  " + std::to_wstring(g.cursorX) + L", " +
                                 std::to_wstring(g.cursorY);
@@ -384,6 +389,13 @@ void SelectFile(bool save) {
 }
 
 void DoCommand(WORD id) {
+    if (id >= 600 && id <= 618) {
+        g_shapeKind = static_cast<ShapeKind>(id - 600);
+        g.toolKind = PaintToolKind::AutoShape;
+        RebuildTool();
+        InvalidateRect(g.hwnd, nullptr, TRUE);
+        return;
+    }
     switch (id) {
         case 100: NewDocument(800, 600); SetTitle(); break;
         case 101: SelectFile(false); break;
@@ -546,6 +558,15 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam) 
             AppendMenuW(imageMenu, MF_STRING, 404, L"&Attributes...");
             AppendMenuW(imageMenu, MF_STRING, 405, L"&Stretch / Skew...");
             AppendMenuW(imageMenu, MF_STRING, 406, L"Flip / &Rotate...");
+            static const wchar_t* shapeLabels[] = {
+                L"Rectangle", L"Rounded rectangle", L"Oval", L"Right triangle",
+                L"Diamond", L"Pentagon", L"Hexagon", L"5-point star", L"4-point star",
+                L"6-point star", L"Heart", L"Lightning", L"Left arrow", L"Right arrow",
+                L"Up arrow", L"Down arrow", L"Cloud callout", L"Oval callout",
+                L"Rounded rectangle callout"};
+            HMENU shapes = CreatePopupMenu();
+            for (int i = 0; i < 19; ++i)
+                AppendMenuW(shapes, MF_STRING, 600 + i, shapeLabels[i]);
             HMENU colors = CreatePopupMenu();
             AppendMenuW(colors, MF_STRING, 501, L"&Edit Colors...");
             HMENU help = CreatePopupMenu();
@@ -554,6 +575,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam) 
             AppendMenuW(menu, MF_POPUP, reinterpret_cast<UINT_PTR>(edit), L"&Edit");
             AppendMenuW(menu, MF_POPUP, reinterpret_cast<UINT_PTR>(view), L"&View");
             AppendMenuW(menu, MF_POPUP, reinterpret_cast<UINT_PTR>(imageMenu), L"&Image");
+            AppendMenuW(menu, MF_POPUP, reinterpret_cast<UINT_PTR>(shapes), L"&Shapes");
             AppendMenuW(menu, MF_POPUP, reinterpret_cast<UINT_PTR>(colors), L"&Colors");
             AppendMenuW(menu, MF_POPUP, reinterpret_cast<UINT_PTR>(help), L"&Help");
             SetMenu(hwnd, menu);

@@ -259,7 +259,34 @@ gap remains.
 application code changed, so the build/selftest/GUI results from Session 11
 still stand.
 
-**Commit:** e01acd823f13a96f07a9c3a74f299ca6b62c1ca6
+**Commit:** e01acd823f13a96f07a9c3a74f299ca6b62c1ca6 (`19239da`)
+
+## 2026-11-27 — Session 13 — UI rebuilt from source-derived names + auto-shapes
+
+**Request:** "build ui copy from source." No Microsoft assets, icons or licence
+text were copied; only human-readable names observed in the shipped artifacts
+were used.
+
+**Evidence:** REA `inspect_pe_resources` on the vendored `PaintUI.dll`
+(`ev_6a1ae6c4...`, 2 resources, no icon groups) plus a read-only string
+inventory of the installed `PaintUI.pri`, which names the source tool set
+(`PencilTool`, `AirBrush`, `CalligraphyPen`, `EraserTool`, `FillTool`,
+`ColorPickerTool`, `MagnifierTool`, `OvalTool`, `RoundedRectTool`, ...) and 14
+auto-shapes. Recorded in `docs/evidence/PAINT_MODULES.md`.
+
+**Change:** added `src/core/shapes.h/.cpp` with all 19 observed shapes
+(rectangle, rounded rectangle, oval, triangle, diamond, pentagon, hexagon,
+three stars, heart, lightning, four arrows, three callouts), polygon outline
++ even-odd scanline fill. `CRectTool` now takes a `ShapeKind`; added
+`CreateAutoShapeTool` and a `Shapes` menu with the source names. Tool labels
+aligned to source (`Oval`, `Calligraphy pen`, `Color picker`). Added 7
+shape selftests.
+
+**Verification:** MSVC build 0 warnings/0 errors (both targets); selftest **100
+checks, 0 FAIL**; GUI smoke launched with title `PaintRebuild - Untitled`.
+
+**Commit:** 7d9561249ed71fe555e8b22b61794a0bb816d833
+
 
 
 

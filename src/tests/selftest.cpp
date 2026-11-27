@@ -9,6 +9,7 @@
 #include "../core/codec.h"
 #include "../core/clipboard.h"
 #include "../core/project.h"
+#include "../core/shapes.h"
 #include "../core/color.h"
 #include "../core/event.h"
 #include "../core/geometry.h"
@@ -277,6 +278,23 @@ static void TestProjectAndClipboard() {
     CHECK(canvas->GetPixel(Point{3, 3}).argb == palette::Red().argb);
 }
 
+static void TestShapes() {
+    const auto diamond = ShapePoints(ShapeKind::Diamond, Rect{0, 0, 10, 10});
+    CHECK(diamond.size() == 4);
+    CHECK(diamond[0].x == 5 && diamond[0].y == 0);
+    CHECK(std::string(ShapeName(ShapeKind::Heart)) == "Heart");
+    CHECK(ShapePoints(ShapeKind::CloudCallout, Rect{0, 0, 10, 10}).size() > 30);
+
+    auto image = Image::Create(Size{24, 24});
+    DrawShape(*image, Rect{2, 2, 16, 16}, ShapeKind::Diamond, palette::Red(), true);
+    CHECK(image->GetPixel(Point{10, 10}).argb == palette::Red().argb);
+    CHECK(image->GetPixel(Point{0, 0}).argb == palette::White().argb);
+
+    auto filled = Image::Create(Size{24, 24});
+    DrawShape(*filled, Rect{2, 2, 16, 16}, ShapeKind::Ellipse, palette::Blue(), true);
+    CHECK(filled->GetPixel(Point{10, 10}).argb == palette::Blue().argb);
+}
+
 int main() {
     CHECK(sizeof(std::uint32_t) == 4);  // Stage 0 harness check
     TestGeometry();
@@ -287,6 +305,7 @@ int main() {
     TestTools();
     TestCodec();
     TestProjectAndClipboard();
+    TestShapes();
 
     std::printf("pr_selftest: %d checks, %d FAIL\n", g_checks, g_fails);
     return g_fails == 0 ? 0 : 1;

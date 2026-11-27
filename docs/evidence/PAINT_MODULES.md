@@ -109,6 +109,23 @@ was executed and no command ID values are claimed. Cloud/AI types present in
 the metadata (e.g. `GenerativeFillCommandBar`) are observation-only and remain
 excluded from our implementation.
 
+## UI labels / tool set from the shipped resources (2026-11-27)
+- `inspect_pe_resources` on vendored `PaintUI.dll`:
+  `ev_6a1ae6c4c6f3937f5a3e25053d4e00d98f00437c7341a8cde4f339ea145eecaf`
+  (2 resources; no icon groups — UI definitions live in `PaintUI.pri`).
+- Read-only string inventory of the installed `PaintUI.pri` gave the source's
+  tool/shape names: `PencilTool`, `AirBrush`, `CalligraphyPen`, `EraserTool`,
+  `FillTool`, `ColorPickerTool`, `MagnifierTool`, `TextTool`, `LineTool`,
+  `CurveTool`, `PolygonTool`, `RectangleTool`, `OvalTool`, `RoundedRectTool`,
+  `RectangularSelectionLarge`, `FreeFormSelectionLarge`, plus 14 auto-shapes
+  (`RightTriangleTool`, `DiamondTool`, `PentagonTool`, `HexagonTool`,
+  `FivePointStarTool`, `FourPointStarTool`, `SixPointStarTool`, `HeartTool`,
+  `LightningTool`, four arrow tools, three callout tools).
+**Inference:** our tool labels were aligned to those names (`Oval`,
+`Calligraphy pen`, `Color picker`, etc.) and the 19 auto-shapes were added as a
+`Shapes` menu. **No SVG/PNG assets, icons or licence text from the package were
+copied** — only human-readable names were used as evidence.
+
 ## Explicitly excluded by user instruction (2026-11-27)
 No licence or cloud modules are copied or reimplemented. The installed app also
 contains `AIServices.dll`, `AIServicesCS.dll`, `AIStore.dll`,

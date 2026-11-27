@@ -197,33 +197,13 @@ void CLineTool::OnStylusUp(const Point& p) {
     EndStroke(OperationKind::Stroke);
 }
 
-CRectTool::CRectTool(ToolContext& context, PaintToolKind kind, bool filled)
-    : CPaintTool(context, kind), filled_(filled) {}
+CRectTool::CRectTool(ToolContext& context, PaintToolKind kind, bool filled, ShapeKind shape)
+    : CPaintTool(context, kind), filled_(filled), shape_(shape) {}
 
 void CRectTool::DrawShape() {
     const Rect r = NormalizeRect(Rect{start_.x, start_.y, last_.x - start_.x,
                                       last_.y - start_.y});
-    for (int y = r.y; y < r.y + r.h; ++y) {
-        for (int x = r.x; x < r.x + r.w; ++x) {
-            const bool edge = x == r.x || x == r.x + r.w - 1 || y == r.y ||
-                              y == r.y + r.h - 1;
-            if (filled_ || edge)
-                context_.image.SetPixel(Point{x, y}, context_.foreground);
-        }
-    }
-    // Ellipses are rectangular bounds with corners removed.
-    if (kind_ == PaintToolKind::Ellipse && !filled_ && r.w > 2 && r.h > 2) {
-        const double cx = r.x + r.w / 2.0;
-        const double cy = r.y + r.h / 2.0;
-        for (int y = r.y; y < r.y + r.h; ++y) {
-            for (int x = r.x; x < r.x + r.w; ++x) {
-                const double nx = (x - cx) / (r.w / 2.0);
-                const double ny = (y - cy) / (r.h / 2.0);
-                if (nx * nx + ny * ny > 1.05)
-                    context_.image.SetPixel(Point{x, y}, context_.background);
-            }
-        }
-    }
+    pr::DrawShape(context_.image, r, shape_, context_.foreground, filled_);
 }
 
 void CRectTool::OnStylusDown(const Point& p) {
@@ -273,6 +253,12 @@ void TextTool::OnStylusDown(const Point& p) {
     modified_ = true;
 }
 
+std::unique_ptr<CPaintTool> CreateAutoShapeTool(ToolContext& context, ShapeKind shape) {
+    auto tool = std::make_unique<CRectTool>(context, PaintToolKind::AutoShape, false);
+    tool->SetShape(shape);
+    return tool;
+}
+
 std::unique_ptr<CPaintTool> CreatePaintTool(ToolContext& context, PaintToolKind kind) {
     switch (kind) {
         case PaintToolKind::Pencil:
@@ -294,11 +280,13 @@ std::unique_ptr<CPaintTool> CreatePaintTool(ToolContext& context, PaintToolKind 
         case PaintToolKind::Polygon:
             return std::make_unique<CLineTool>(context);
         case PaintToolKind::Rectangle:
+            return std::make_unique<CRectTool>(context, kind, false, ShapeKind::Rectangle);
         case PaintToolKind::RoundedRectangle:
+            return std::make_unique<CRectTool>(context, kind, false, ShapeKind::RoundedRectangle);
         case PaintToolKind::AutoShape:
             return std::make_unique<CRectTool>(context, kind, false);
         case PaintToolKind::Ellipse:
-            return std::make_unique<CRectTool>(context, kind, false);
+            return std::make_unique<CRectTool>(context, kind, false, ShapeKind::Ellipse);
         case PaintToolKind::Selection:
         case PaintToolKind::FreeFormSelection:
             return std::make_unique<SelectionTool>(context);
@@ -317,15 +305,15 @@ const char* ToolName(PaintToolKind kind) {
         case PaintToolKind::Pencil: return "Pencil";
         case PaintToolKind::Brush: return "Brush";
         case PaintToolKind::Airbrush: return "Airbrush";
-        case PaintToolKind::Calligraphic: return "Calligraphy";
+        case PaintToolKind::Calligraphic: return "Calligraphy pen";
         case PaintToolKind::Eraser: return "Eraser";
         case PaintToolKind::FloodFill: return "Fill with color";
-        case PaintToolKind::PickColor: return "Pick color";
+        case PaintToolKind::PickColor: return "Color picker";
         case PaintToolKind::Line: return "Line";
         case PaintToolKind::Curve: return "Curve";
         case PaintToolKind::Polygon: return "Polygon";
         case PaintToolKind::Rectangle: return "Rectangle";
-        case PaintToolKind::Ellipse: return "Ellipse";
+        case PaintToolKind::Ellipse: return "Oval";
         case PaintToolKind::RoundedRectangle: return "Rounded rectangle";
         case PaintToolKind::AutoShape: return "Auto shape";
         case PaintToolKind::Text: return "Text";

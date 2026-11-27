@@ -11,6 +11,7 @@
 #include "../core/geometry.h"
 #include "../core/image.h"
 #include "../core/operation.h"
+#include "../core/shapes.h"
 
 namespace pr {
 
@@ -140,13 +141,16 @@ public:
 
 class CRectTool : public CPaintTool {
 public:
-    CRectTool(ToolContext& context, PaintToolKind kind, bool filled);
+    CRectTool(ToolContext& context, PaintToolKind kind, bool filled,
+              ShapeKind shape = ShapeKind::Rectangle);
+    void SetShape(ShapeKind shape) { shape_ = shape; }
     void OnStylusDown(const Point& p) override;
     void OnStylusMove(const Point& p) override;
     void OnStylusUp(const Point& p) override;
 
 private:
     bool filled_;
+    ShapeKind shape_ = ShapeKind::Rectangle;
     void DrawShape();
 };
 
@@ -179,6 +183,7 @@ public:
 };
 
 std::unique_ptr<CPaintTool> CreatePaintTool(ToolContext& context, PaintToolKind kind);
+std::unique_ptr<CPaintTool> CreateAutoShapeTool(ToolContext& context, ShapeKind shape);
 const char* ToolName(PaintToolKind kind);
 
 }  // namespace pr
