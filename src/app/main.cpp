@@ -473,10 +473,14 @@ void DrawCommandBar(HDC hdc) {
 
     for (int i = 0; i < 20 && i < static_cast<int>(L.palette.size()); ++i) {
         RECT r = L.palette[i];
-        Color c = (i < static_cast<int>(kPaletteCount)) ? kPalette[i] : MakeColor(255,255,255);
+        Color c = (i < 20) ? palette::Paint11Colors[i] : MakeColor(255,255,255);
         HBRUSH cb = CreateSolidBrush(RGB(Red(c), Green(c), Blue(c)));
-        FillRectValue(hdc, r, cb); DeleteObject(cb);
-        FrameRect(hdc, &r, static_cast<HBRUSH>(GetStockObject(GRAY_BRUSH)));
+        HGDIOBJ oldB = SelectObject(hdc, cb);
+        HPEN pen = CreatePen(PS_SOLID, 1, RGB(180,180,180));
+        HGDIOBJ oldP = SelectObject(hdc, pen);
+        Ellipse(hdc, r.left, r.top, r.right, r.bottom);
+        SelectObject(hdc, oldP); SelectObject(hdc, oldB);
+        DeleteObject(pen); DeleteObject(cb);
     }
     DrawCmdBtn(hdc, L.editColors, "colors.png", L"Edit", false, false);
 }
@@ -629,7 +633,7 @@ bool HandleCommandBarClick(int x, int y, bool rightButton) {
     }
     for (int i = 0; i < static_cast<int>(L.palette.size()) && i < 20; ++i) {
         if (HitRect(L.palette[i], x, y)) {
-            Color c = (i < static_cast<int>(kPaletteCount)) ? kPalette[i] : MakeColor(255,255,255);
+            Color c = (i < 20) ? palette::Paint11Colors[i] : MakeColor(255,255,255);
             if (rightButton) g.background = c; else g.foreground = c;
             RebuildTool(); InvalidateRect(g.hwnd, nullptr, TRUE); return true;
         }

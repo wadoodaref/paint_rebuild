@@ -485,3 +485,15 @@ Watercolour) matching the 700-708 tool mapping.
 
 **Commit:** f4b9cfe42e063912b3be05e40a387d7dbf128242
 
+
+
+## 2026-11-27 ? Session 25 ? Paint 11 palette and swatch fidelity
+
+**Change:** added `palette::Paint11Colors[20]` (UIA-named 20-color default
+palette) and switched the command-bar color swatches to use it; swatches render
+as circles to match Paint 11.
+
+**Verification:** MSVC build 0 warnings/0 errors; selftest 103 checks, 0 FAIL.
+
+**Commit:** e4c891eaa4f8349843cd15b0f064fd8e13e69a50
+
