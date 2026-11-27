@@ -237,15 +237,46 @@ void DrawCanvasResizeHandles(HDC hdc, const RECT& canvas) {
 void DrawCanvas(HDC hdc, const RECT& canvas) {
     const int w = g.image->width();
     const int h = g.image->height();
+    // Checkerboard behind transparent pixels
+    const int dw = w * g.zoom, dh = h * g.zoom;
+    const int tile = 8;
+    for (int ty = 0; ty < dh; ty += tile) {
+        for (int tx = 0; tx < dw; tx += tile) {
+            const bool light = ((tx / tile) + (ty / tile)) % 2 == 0;
+            HBRUSH cb = CreateSolidBrush(light ? RGB(255,255,255) : RGB(204,204,204));
+            RECT tr{canvas.left + tx, canvas.top + ty, canvas.left + std::min(tx + tile, dw), canvas.top + std::min(ty + tile, dh)};
+            FillRectValue(hdc, tr, cb); DeleteObject(cb);
+        }
+    }
+    // Alpha-blend image (premultiply temp)
     BITMAPINFO info{};
     info.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
     info.bmiHeader.biWidth = w;
-    info.bmiHeader.biHeight = -h;  // top-down DIB (our rows are already top-down)
+    info.bmiHeader.biHeight = -h;
     info.bmiHeader.biPlanes = 1;
     info.bmiHeader.biBitCount = 32;
     info.bmiHeader.biCompression = BI_RGB;
-    StretchDIBits(hdc, canvas.left, canvas.top, w * g.zoom, h * g.zoom,
-                  0, 0, w, h, g.image->Bitmap(), &info, DIB_RGB_COLORS, SRCCOPY);
+    std::vector<uint8_t> prem(static_cast<size_t>(w) * h * 4);
+    const uint8_t* src = reinterpret_cast<const uint8_t*>(g.image->Bitmap());
+    for (size_t i = 0, n = prem.size() / 4; i < n; ++i) {
+        const uint8_t a = src[i*4+3];
+        prem[i*4+0] = static_cast<uint8_t>((src[i*4+0] * a + 127) / 255);
+        prem[i*4+1] = static_cast<uint8_t>((src[i*4+1] * a + 127) / 255);
+        prem[i*4+2] = static_cast<uint8_t>((src[i*4+2] * a + 127) / 255);
+        prem[i*4+3] = a;
+    }
+    HDC mem = CreateCompatibleDC(hdc);
+    void* bits = nullptr;
+    HBITMAP dib = CreateDIBSection(mem, &info, DIB_RGB_COLORS, &bits, nullptr, 0);
+    if (dib && bits) {
+        memcpy(bits, prem.data(), prem.size());
+        HGDIOBJ old = SelectObject(mem, dib);
+        BLENDFUNCTION bf{AC_SRC_OVER, 0, 255, AC_SRC_ALPHA};
+        AlphaBlend(hdc, canvas.left, canvas.top, dw, dh, mem, 0, 0, w, h, bf);
+        SelectObject(mem, old);
+    }
+    if (dib) DeleteObject(dib);
+    DeleteDC(mem);
 
     if (g.showGrid && g.zoom >= 4) {
         HPEN grid = CreatePen(PS_SOLID, 1, RGB(190, 190, 190));

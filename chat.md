@@ -555,3 +555,14 @@ and Fill command-bar buttons for closer Paint 11 fidelity.
 
 **Commit:** ec69c53e0ffd8d08eb7cfd079ed2d2c3bcde69cb
 
+
+
+## 2026-11-27 ? Session 31 ? Checkerboard transparency background
+
+**Change:** canvas draws a checkerboard behind the image and alpha-blends the
+BGRA image so transparent pixels show correctly (Paint fidelity).
+
+**Verification:** MSVC build 0 warnings/0 errors; selftest 103 checks, 0 FAIL.
+
+**Commit:** 3ebf2de2077e2a72998b185f30adf20e851d27f8
+
