@@ -154,14 +154,8 @@ const std::array<PaintToolKind, 18> kTools = {
     PaintToolKind::Rectangle, PaintToolKind::Ellipse,
     PaintToolKind::RoundedRectangle, PaintToolKind::Inactive};
 
-const std::array<Color, 28> kPalette = {
-    MakeColor(0,0,0), MakeColor(128,128,128), MakeColor(128,0,0), MakeColor(128,64,0),
-    MakeColor(128,128,0), MakeColor(0,128,0), MakeColor(0,128,128), MakeColor(0,0,128),
-    MakeColor(128,0,128), MakeColor(128,64,64), MakeColor(0,64,64), MakeColor(64,0,128),
-    MakeColor(0,128,64), MakeColor(0,0,0), MakeColor(255,255,255), MakeColor(192,192,192),
-    MakeColor(255,0,0), MakeColor(255,128,0), MakeColor(255,255,0), MakeColor(0,255,0),
-    MakeColor(0,255,255), MakeColor(0,0,255), MakeColor(255,0,255), MakeColor(255,128,128),
-    MakeColor(128,255,128), MakeColor(128,255,255), MakeColor(128,128,255), MakeColor(192,192,192)};
+const Color* kPalette = palette::BasicColors;
+constexpr std::size_t kPaletteCount = 28;
 
 void RebuildTool() {
     g.context = std::make_unique<ToolContext>(*g.image, g.stock, g.attributes,
@@ -304,7 +298,7 @@ void DrawPalette(HDC hdc) {
     FillRectValue(hdc, RECT{26, top + 28, 54, top + 56}, bg);
     DeleteObject(bg);
 
-    for (std::size_t i = 0; i < kPalette.size(); ++i) {
+    for (std::size_t i = 0; i < kPaletteCount; ++i) {
         const int col = static_cast<int>(i % 14);
         const int row = static_cast<int>(i / 14);
         const int x = 70 + col * 24;
@@ -480,7 +474,7 @@ bool HandlePaletteClick(int x, int y, bool rightButton) {
         InvalidateRect(g.hwnd, nullptr, TRUE);
         return true;
     }
-    for (std::size_t i = 0; i < kPalette.size(); ++i) {
+    for (std::size_t i = 0; i < kPaletteCount; ++i) {
         const int px = 70 + static_cast<int>(i % 14) * 24;
         const int py = top + 10 + static_cast<int>(i / 14) * 26;
         if (x >= px && x < px + 22 && y >= py && y < py + 22) {

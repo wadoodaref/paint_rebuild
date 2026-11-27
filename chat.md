@@ -364,7 +364,21 @@ File > Print... and File > Print Preview.
 **Verification:** MSVC build 0 warnings/0 errors (both targets); selftest 100
 checks, 0 FAIL; GUI smoke launched with title `PaintRebuild - Untitled`.
 
-**Commit:** aa11ca46c9bf50c8d4652f96849445ce924fedcc
+**Commit:** aa11ca46c9bf50c8d4652f96849445ce924fedcc (`06e738b`)
+
+## 2026-11-27 — Session 19 — Exact 28-colour basic palette
+
+**Change:** checked the vendored/installed Paint artifacts for palette hex
+literals (none present — recorded as an evidence gap) and set the canonical
+28-colour MS Paint basic palette in `src/core/color.h` as the single source of
+truth; the Win32 colour box now uses it directly instead of its own ad-hoc
+array. Added three selftest assertions for palette entries.
+
+**Verification:** MSVC build 0 warnings/0 errors (both targets); selftest **103
+checks, 0 FAIL**; GUI smoke launched with title `PaintRebuild - Untitled`.
+
+**Commit:** 350d5d05ab4b9c02f078de685f6593ab8f9fd4c5
+
 
 
 

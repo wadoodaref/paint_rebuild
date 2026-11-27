@@ -43,9 +43,10 @@ inline Color Invert(Color c) {
                      static_cast<std::uint8_t>(255 - Blue(c)), Alpha(c));
 }
 
-// GAP: the exact 28-colour palette values are resource data, not export data.
-// These are the conventional Paint swatches; replace from REA resources in a
-// later fidelity stage if a difference is observed.
+// The 28-colour Paint basic palette. Inference: these canonical MS Paint
+// swatches are not present as literal hex in the REA artifacts (evidence gap),
+// but match the shipped colour-box convention. They are the single source of
+// truth for the Win32 colour box.
 namespace palette {
 constexpr Color Black() { return MakeColor(0, 0, 0); }
 constexpr Color White() { return MakeColor(255, 255, 255); }
@@ -53,6 +54,22 @@ constexpr Color Red() { return MakeColor(255, 0, 0); }
 constexpr Color Green() { return MakeColor(0, 128, 0); }
 constexpr Color Blue() { return MakeColor(0, 0, 255); }
 constexpr Color Yellow() { return MakeColor(255, 255, 0); }
+
+constexpr Color BasicColors[28] = {
+    MakeColor(0x00, 0x00, 0x00), MakeColor(0x80, 0x80, 0x80),
+    MakeColor(0x80, 0x00, 0x00), MakeColor(0x80, 0x80, 0x00),
+    MakeColor(0x00, 0x80, 0x00), MakeColor(0x00, 0x80, 0x80),
+    MakeColor(0x00, 0x00, 0x80), MakeColor(0x80, 0x00, 0x80),
+    MakeColor(0x80, 0x80, 0x40), MakeColor(0x00, 0x40, 0x40),
+    MakeColor(0x00, 0x80, 0xFF), MakeColor(0x00, 0x40, 0x80),
+    MakeColor(0x80, 0x00, 0xFF), MakeColor(0x80, 0x40, 0x00),
+    MakeColor(0xFF, 0xFF, 0xFF), MakeColor(0xC0, 0xC0, 0xC0),
+    MakeColor(0xFF, 0x00, 0x00), MakeColor(0xFF, 0xFF, 0x00),
+    MakeColor(0x00, 0xFF, 0x00), MakeColor(0x00, 0xFF, 0xFF),
+    MakeColor(0x00, 0x00, 0xFF), MakeColor(0xFF, 0x00, 0xFF),
+    MakeColor(0xFF, 0xFF, 0x80), MakeColor(0x00, 0xFF, 0x80),
+    MakeColor(0x80, 0xFF, 0xFF), MakeColor(0x80, 0x80, 0xFF),
+    MakeColor(0xFF, 0x00, 0x80), MakeColor(0xFF, 0x80, 0x40)};
 }  // namespace palette
 
 }  // namespace pr

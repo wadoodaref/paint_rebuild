@@ -48,6 +48,9 @@ static void TestColor() {
     const Color inv = Invert(red);
     CHECK(Red(inv) == 55 && Green(inv) == 155 && Blue(inv) == 205 && Alpha(inv) == 255);
     CHECK(Alpha(WithAlpha(red, 32)) == 32);
+    CHECK(palette::BasicColors[0].argb == MakeColor(0, 0, 0).argb);
+    CHECK(palette::BasicColors[17].argb == MakeColor(255, 255, 0).argb);
+    CHECK(palette::BasicColors[27].argb == MakeColor(255, 128, 64).argb);
 }
 
 static void TestAttributes() {
