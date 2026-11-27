@@ -336,7 +336,22 @@ RestartRecovery, PaintUI shell); 100/100 headless checks; GUI smoke OK.
 Only evidence-only details remain open (exact palette RGB values marked GAP,
 numeric command IDs/CIL behaviour), so functional scope is complete.
 
-**Commit:** b252525e6d3fa4142912a2fbe5f392cfe69e20ac
+**Commit:** b252525e6d3fa4142912a2fbe5f392cfe69e20ac (`8b2455d`)
+
+## 2026-11-27 — Session 17 — Remaining workflow commands: wallpaper, full screen, thumbnail
+
+**Change:** added `src/app/extra_ui.cpp/.h` implementing the remaining source-
+observed commands (telemetry `TraceSetWallpaper`, `TraceFullScreen`, and UI type
+`CanvasThumbnail`): stretch/tiled desktop wallpaper via a BMP snapshot + registry
+settings + `SystemParametersInfoW`, full-screen toggle with Esc to restore, and
+a modeless scaled thumbnail window. Wired File/File-menu items, View items and
+Esc handling; `advapi32.lib` added for registry calls.
+
+**Verification:** MSVC build 0 warnings/0 errors (both targets); selftest 100
+checks, 0 FAIL; GUI smoke launched with title `PaintRebuild - Untitled`.
+
+**Commit:** d37d7cd365684369a68b0b677b9b2ded55bebc5a
+
 
 
 

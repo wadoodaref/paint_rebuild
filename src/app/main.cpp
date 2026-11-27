@@ -19,6 +19,7 @@
 #include "../core/codec.h"
 #include "clipboard_win.h"
 #include "dialogs_win.h"
+#include "extra_ui.h"
 #include "recovery.h"
 #include "text_render.h"
 #include "../core/image.h"
@@ -182,6 +183,7 @@ void NewDocument(int width, int height) {
     g.filePath.clear();
     g.cursorX = g.cursorY = -1;
     RebuildTool();
+    UpdateThumbnailImage(g.image.get());
     InvalidateRect(g.hwnd, nullptr, TRUE);
 }
 
@@ -527,6 +529,7 @@ void SelectFile(bool save) {
             g.stock.Clear();
             g.filePath = p;
             RebuildTool();
+            UpdateThumbnailImage(g.image.get());
             SetTitle();
             InvalidateRect(g.hwnd, nullptr, TRUE);
         } else {
@@ -575,6 +578,10 @@ void DoCommand(WORD id) {
         case 102:
         case 103: SelectFile(true); break;
         case 104: PostQuitMessage(0); break;
+        case 105: SetAsWallpaper(g.image.get(), false); break;
+        case 106: SetAsWallpaper(g.image.get(), true); break;
+        case 309: ToggleFullScreen(g.hwnd); break;
+        case 310: ToggleThumbnail(g.hwnd, g.image.get()); break;
         case 200:
             if (g.stock.Undo(*g.image)) { SetTitle(); InvalidateRect(g.hwnd, nullptr, TRUE); }
             break;
@@ -706,6 +713,9 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam) 
             AppendMenuW(file, MF_STRING, 102, L"&Save");
             AppendMenuW(file, MF_STRING, 103, L"Save &As...");
             AppendMenuW(file, MF_SEPARATOR, 0, nullptr);
+            AppendMenuW(file, MF_STRING, 105, L"Set as Wallpaper (stretched)");
+            AppendMenuW(file, MF_STRING, 106, L"Set as Wallpaper (tiled)");
+            AppendMenuW(file, MF_SEPARATOR, 0, nullptr);
             AppendMenuW(file, MF_STRING, 104, L"E&xit");
             HMENU edit = CreatePopupMenu();
             AppendMenuW(edit, MF_STRING, 200, L"&Undo\tCtrl+Z");
@@ -725,6 +735,8 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam) 
             AppendMenuW(view, MF_STRING, 304, L"Show &Grid");
             AppendMenuW(view, MF_STRING, 307, L"Show &Ruler");
             AppendMenuW(view, MF_STRING, 308, L"Show &Ribbon");
+            AppendMenuW(view, MF_STRING, 309, L"&Full screen");
+            AppendMenuW(view, MF_STRING, 310, L"&Thumbnail");
             HMENU imageMenu = CreatePopupMenu();
             AppendMenuW(imageMenu, MF_STRING, 400, L"&Invert Colors");
             AppendMenuW(imageMenu, MF_STRING, 401, L"Flip &Horizontal");
@@ -909,6 +921,8 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam) 
                     case 'S': DoCommand(103); return 0;
                     default: break;
                 }
+            } else if (wParam == VK_ESCAPE && IsFullScreen()) {
+                ToggleFullScreen(hwnd);
             } else if (wParam == VK_ESCAPE && g.tool) {
                 g.tool->OnCancel();
                 g.drawing = false;
