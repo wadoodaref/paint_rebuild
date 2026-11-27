@@ -1,9 +1,9 @@
-# paint_rebuild — append-only session log
+﻿# paint_rebuild â€” append-only session log
 
 Newest entries are appended at the bottom. One coherent change = one article +
 one commit + one push. Rules: `general_rules_read_first_v7.md`.
 
-## 2026-11-27 — Session 1 — Stage 0: scaffold, rules v7, toolchain-aware build
+## 2026-11-27 â€” Session 1 â€” Stage 0: scaffold, rules v7, toolchain-aware build
 
 **Request:** create a C++ `paint_rebuild` project faithful to the Microsoft Paint
 workflow, built in stages (core modules first, small high-yield first), with a
@@ -19,7 +19,7 @@ REA/MCP as an evidence source; do not ask questions until finished.
 - `general_rules_read_first_v7.md` copied verbatim from `LightWord_v4`, the same
   file the sibling rebuild projects carry. `chat.md`, `PROJECT_PLAN.md`,
   `HANDOFF_CONTINUATION_PROMPT.md`, `run.ps1` and `build.ps1` created at project
-  start per rules §6.
+  start per rules Â§6.
 - Build script mirrors the Word-rebuild approach: auto-detect MSVC `vcvars64`
   or a portable MinGW-w64 `g++`, zero-dependency C++17 core, headless selftest
   first, Win32 app added in a later stage.
@@ -31,7 +31,7 @@ REA/MCP as an evidence source; do not ask questions until finished.
 `README.md`, `build.ps1`, `run.ps1`, `src/tests/selftest.cpp`,
 `docs/evidence/REA_SOURCES.md`.
 
-## 2026-11-27 — Session 2 — Foundation tranche (Stages 0–3): REA evidence + core model + operations + tools
+## 2026-11-27 â€” Session 2 â€” Foundation tranche (Stages 0â€“3): REA evidence + core model + operations + tools
 
 **Request continuation:** "use rea/mcp and be faithful to source workflow and
 modules." No questions asked, per instruction.
@@ -48,14 +48,14 @@ full type list exceeded the MCP response budget and was left as an explicit
 unknown rather than guessed.
 
 **Implementation (fresh C++, same module boundaries):**
-- `src/core/geometry.h`, `color.h`, `event.h` — POINT/SIZE/RECT analogues, ARGB
+- `src/core/geometry.h`, `color.h`, `event.h` â€” POINT/SIZE/RECT analogues, ARGB
   helpers, `IPaintListener`.
-- `src/core/image.h/.cpp` — `Image` with Crop/Resize/Rotate/Flip/Skew/
+- `src/core/image.h/.cpp` â€” `Image` with Crop/Resize/Rotate/Flip/Skew/
   InvertColors/Blit and the observed geometry utilities.
-- `src/core/attributes.h` — `CAttributeStore` (thickness/tolerance/opacity).
-- `src/core/operation.h/.cpp` — `PatchOperation`/`SnapshotOperation` and
+- `src/core/attributes.h` â€” `CAttributeStore` (thickness/tolerance/opacity).
+- `src/core/operation.h/.cpp` â€” `PatchOperation`/`SnapshotOperation` and
   `COperationStock` undo/redo with dirty tracking (BasePaint operation split).
-- `src/tools/tool.h/.cpp` — `CPaintTool` with `OnStylusDown/Move/Up`,
+- `src/tools/tool.h/.cpp` â€” `CPaintTool` with `OnStylusDown/Move/Up`,
   `OnKeyDown`, `OnCancel`, preview, thickness/tolerance/opacity; concrete
   pencil, brush, airbrush, calligraphic, eraser, flood fill, pick colour, line,
   rect/ellipse, selection, zoom and text tools.
@@ -63,8 +63,29 @@ unknown rather than guessed.
   detected at the x86 BuildTools path (a portable MinGW-w64 was also staged
   as fallback because none was initially on PATH).
 
-**Verification:** `build.ps1` — 0 warnings, 0 errors (MSVC 14.44);
-`pr_selftest.exe` — **72 checks, 0 FAIL** (geometry, colour, attributes, image
+**Verification:** `build.ps1` â€” 0 warnings, 0 errors (MSVC 14.44);
+`pr_selftest.exe` â€” **72 checks, 0 FAIL** (geometry, colour, attributes, image
 transforms, undo/redo, all core tools). REA evidence IDs cited in the docs.
 
-**Commit:** `6f47fa71e019da3b4e4712eed7197050a74e8eb3`
+**Commit:** `195b0a2` (pre-amend hash `6f47fa7` was superseded when this
+entry's hash was written; the pushed tip is `195b0a2`).
+
+## 2026-11-27 â€” Session 3 â€” Stage 4: BMP codec + explicit no-license/no-cloud rule
+
+**Request continuation:** user instructed "donot copy license or cloud
+modules." No licence/NOTICE file from a sibling project was ever copied, and
+no cloud/AI/provenance/telemetry module is implemented or linked. This is now
+an explicit non-goal in `PROJECT_PLAN.md` and marked in
+`docs/evidence/PAINT_MODULES.md`; the observed AI/cloud names remain evidence
+only.
+
+**Change:** added `src/core/codec.h/.cpp`, a dependency-free 32-bit BMP writer
+and 24/32-bit BI_RGB reader (GDI bottom-up layout, top-down DIB support), plus
+`DetectFormat`/`FormatName`. WIC/GDI+ PNG/JPEG is deferred to the app stage.
+Added round-trip selftests (pixel-exact save â†’ load â†’ compare).
+
+**Verification:** MSVC build 0 warnings/0 errors; `pr_selftest.exe` â€” **79
+checks, 0 FAIL** (72 foundation + 7 codec checks).
+
+**Commit:** 82f28177788a42aded1311dd54989d454e7b811b
+

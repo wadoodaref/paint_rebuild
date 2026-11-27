@@ -87,6 +87,14 @@ commit them. Our `src/core/operation.h` mirrors this split.
 `IsWin30Dib`, WIC/GDI+ conversions (`CreateWicBitmap`, `CreateHBitmap`, `ToColor`,
 `WithAlpha`).
 
+## Explicitly excluded by user instruction (2026-11-27)
+No licence or cloud modules are copied or reimplemented. The installed app also
+contains `AIServices.dll`, `AIServicesCS.dll`, `AIStore.dll`,
+`PaintAIManager.dll`, `c2pa_c.dll`, `Watermarker.dll`, `ProvenanceHelper.dll`,
+`Reporting.dll` and generative-fill tools/operations. These were observed only
+as names during PE inspection; they are out of scope for PaintRebuild. No
+LICENSE/NOTICE file from a sibling project is carried in this repo.
+
 ## Unknowns (do not claim without evidence)
 - Exact default thickness/tolerance values and palette colors are not in the
   export table; they must come from resources or runtime observation.

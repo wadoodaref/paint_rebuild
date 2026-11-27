@@ -13,7 +13,7 @@ recorded in `docs/evidence/` and used as evidence, never as copied code.
 | 1 | Core: `Point/Size/Rect/Color`, `Image` (ARGB pixels, blit/clear/fill, crop/resize/rotate/flip/skew/invert), `CAttributeStore`, `IPaintListener` | headless pixel tests pass; no Win32 UI dependency | DONE |
 | 2 | `Operation` stock + undo/redo + dirty tracking (BasePaint operation split) | selftest: N edits, undo/redo restores exact pixels | DONE |
 | 3 | `CPaintTool`-style tools: pencil, brush, airbrush, eraser, flood fill, pick colour, line, rect/auto-shape, selection, zoom | selftest verifies pixel geometry and per-tool attributes | DONE |
-| 4 | Codecs (`ImageProcessing` analog): native BMP, WIC/GDI+ PNG/JPEG | round-trip selftest (write → read → identical pixels) | TODO |
+| 4 | Codecs (`ImageProcessing` analog): native BMP, WIC/GDI+ PNG/JPEG | round-trip selftest (write → read → identical pixels) | BMP DONE; WIC TODO |
 | 5 | `ProjectFile` analog: layers + document persistence, selection/clipboard | selftest covers layers, selection and transforms | TODO |
 | 6 | Win32 shell (`PaintUI` analog): window, tool box, color box, canvas, status bar, menus | app builds and launches; tools respond to mouse | TODO |
 | 7 | Paint dialogs + fidelity pass from REA evidence | Attributes, Edit Colors, Stretch/Skew, Flip/Rotate, Text, Zoom, recovery | TODO |
@@ -26,11 +26,18 @@ operations, `CAttributeStore`, shape factory, utilities; `ImageProcessing.dll`
 autorecovery. We reimplement these boundaries in fresh C++, not copy them.
 | 8 | Final verification: full selftest + smoke script + handoff | zero warnings/errors, all stages pushed | TODO |
 
-## Non-goals (deliberate)
+## Non-goals (deliberate, user 2026-11-27)
 - No copying of Microsoft binaries, icons, strings or source.
+- **No copied license/NOTICE files from sibling projects.** The shared rules v7
+  file is carried deliberately; nothing else is copied from another repo.
+- **No cloud / AI / provenance / telemetry modules.** REA observed
+  `AIServices.dll`, `AIStore.dll`, `PaintAIManager.dll`, `AIServicesCS.dll`,
+  `c2pa_c.dll`, `Watermarker.dll`, `ProvenanceHelper.dll`, `AIStore` and
+  generative-fill/telemetry exports; they remain evidence observations only and
+  are **not** reimplemented, linked or copied here.
 - No runtime dependency on any installed Paint app; REA artifacts are read-only
   evidence used on the development machine only.
-- No cross-platform toolkit; no cloud features.
+- No cross-platform toolkit.
 
 ## REA evidence workflow (user-approved, 2026-11-27)
 1. Locate the installed Paint artifact per rules v7 §8 (verify the exact file
@@ -45,3 +52,5 @@ autorecovery. We reimplement these boundaries in fresh C++, not copy them.
 ## Verification log
 - 2026-11-27: Stages 0–3 built with MSVC 14.44: 0 warnings, 0 errors;
   `pr_selftest.exe` 72/72 checks passing; foundation tranche committed+pushed.
+- 2026-11-27: Stage 4 BMP round-trip added; 79/79 checks passing, committed and
+  pushed.

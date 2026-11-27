@@ -1,10 +1,12 @@
 // Headless self-test harness. No UI, no Paint dependency, no external libs.
 #include <cstdint>
 #include <cstdio>
+#include <filesystem>
 #include <memory>
 #include <string>
 
 #include "../core/attributes.h"
+#include "../core/codec.h"
 #include "../core/color.h"
 #include "../core/event.h"
 #include "../core/geometry.h"
@@ -212,6 +214,26 @@ static void TestTools() {
     CHECK(std::string(ToolName(PaintToolKind::FloodFill)) == "Fill with color");
 }
 
+static void TestCodec() {
+    const std::wstring path = (std::filesystem::temp_directory_path() / L"pr_selftest.bmp").wstring();
+    auto image = Image::Create(Size{5, 4});
+    image->SetPixel(Point{0, 0}, palette::Red());
+    image->SetPixel(Point{4, 3}, palette::Blue());
+    image->SetPixel(Point{2, 1}, MakeColor(12, 34, 56, 255));
+    CHECK(SaveBmp(*image, path));
+    CHECK(DetectFormat(path) == ImageFormat::Bmp);
+    auto loaded = LoadBmp(path);
+    CHECK(loaded != nullptr);
+    if (loaded) {
+        CHECK(loaded->size().w == 5 && loaded->size().h == 4);
+        CHECK(loaded->GetPixel(Point{0, 0}).argb == palette::Red().argb);
+        CHECK(loaded->GetPixel(Point{4, 3}).argb == palette::Blue().argb);
+        CHECK(loaded->GetPixel(Point{2, 1}).argb == MakeColor(12, 34, 56, 255).argb);
+    }
+    std::error_code ec;
+    std::filesystem::remove(path, ec);
+}
+
 int main() {
     CHECK(sizeof(std::uint32_t) == 4);  // Stage 0 harness check
     TestGeometry();
@@ -220,6 +242,7 @@ int main() {
     TestImage();
     TestOperations();
     TestTools();
+    TestCodec();
 
     std::printf("pr_selftest: %d checks, %d FAIL\n", g_checks, g_fails);
     return g_fails == 0 ? 0 : 1;

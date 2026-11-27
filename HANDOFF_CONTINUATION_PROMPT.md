@@ -8,9 +8,12 @@ every push, regenerate per-machine `GITIGNORED_FILES_<machine>.md` on every
 push).
 
 ## Current state (2026-11-27)
-- Stages 0–3 DONE and verified: scaffold, rules v7, REA evidence map, core
-  `Image`/attributes/geometry, operation stock with undo/redo, and the
-  `CPaintTool`-style tool set. `pr_selftest.exe`: 72 checks, 0 FAIL.
+- Stages 0–4 DONE and verified: scaffold, rules v7, REA evidence map, core
+  `Image`/attributes/geometry, operation stock with undo/redo, the
+  `CPaintTool`-style tool set, and a native BMP codec. `pr_selftest.exe`:
+  79 checks, 0 FAIL.
+- Explicitly out of scope by user instruction: copied licence/NOTICE files and
+  cloud/AI/provenance/telemetry modules (observed in REA, never implemented).
 - MSVC 14.44 auto-detected from
   `C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\...\vcvars64.bat`;
   portable MinGW-w64 staged at `G:\PROJECTS\.toolchain\mingw64` as fallback.
