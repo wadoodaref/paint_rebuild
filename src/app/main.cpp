@@ -380,17 +380,16 @@ void DoCommand(WORD id) {
                 image.Clear(g.background);
             });
             break;
-        case 206:
-            RebuildTool();
-            if (g.tool) {
-                g.tool->OnStylusDown(Point{0, 0});
-                g.tool->OnStylusMove(Point{g.image->width() - 1, g.image->height() - 1});
-                g.tool->OnStylusUp(Point{g.image->width() - 1, g.image->height() - 1});
-                g.toolKind = PaintToolKind::Selection;
-                RebuildTool();
-                InvalidateRect(g.hwnd, nullptr, TRUE);
-            }
+        case 206: {
+            // Select All must drive a SelectionTool, not whatever tool is active.
+            g.toolKind = PaintToolKind::Selection;
+            g.tool = std::make_unique<SelectionTool>(*g.context);
+            g.tool->OnStylusDown(Point{0, 0});
+            g.tool->OnStylusMove(Point{g.image->width() - 1, g.image->height() - 1});
+            g.tool->OnStylusUp(Point{g.image->width() - 1, g.image->height() - 1});
+            InvalidateRect(g.hwnd, nullptr, TRUE);
             break;
+        }
         case 300: g.zoom = 1; InvalidateRect(g.hwnd, nullptr, TRUE); break;
         case 301: g.zoom = 2; InvalidateRect(g.hwnd, nullptr, TRUE); break;
         case 302: g.zoom = 4; InvalidateRect(g.hwnd, nullptr, TRUE); break;

@@ -37,5 +37,12 @@ build\paintrebuild.exe                              # GUI smoke verified
 powershell -ExecutionPolicy Bypass -File run.ps1
 ```
 
-## Next up
-- Stage 1: implement `src/core/` geometry/color/surface and expand the selftest.
+## Final state / remaining backlog
+- Stages 0–6 complete and pushed; stage 8 verification complete (see
+  `PROJECT_PLAN.md`). All 8 documented stages have a committed article in
+  `chat.md`.
+- Remaining fidelity work (stage 7 backlog, not required for the workflow):
+  real Edit Colors / Stretch-Skew / Flip-Rotate dialogs, DirectWrite text
+  rendering, system clipboard `CF_DIB` bridge, autorecovery UI, and paging the
+  `PaintUI.winmd` type list through the REA CLI (MCP response budget blocked it).
+- REA locator: `powershell -ExecutionPolicy Bypass -File tools\rea\locate_paint.ps1 -Json`.

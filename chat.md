@@ -124,7 +124,25 @@ windowscodecs/uuid. `NOMINMAX` added before Windows headers to keep `std::max`.
 `PaintRebuild - Untitled`, then was stopped. No Microsoft Paint binary or
 asset is loaded at runtime.
 
-**Commit:** 47533081f440b73c7676ee0b6dad93e868c8ab69
+**Commit:** 47533081f440b73c7676ee0b6dad93e868c8ab69 (`f6926ab`)
+
+## 2026-11-27 — Session 6 — Stage 7/8: fidelity fix, REA locator tool, final verification
+
+**Change:** Select All now drives an actual `SelectionTool` instead of the
+currently active drawing tool. Added `tools/rea/locate_paint.ps1`, which
+implements rules v7 section 8 as a runnable tool: it enumerates installed Paint
+AppX packages, verifies the exact executables, reports artifact SHA-256, and
+prints the REA/MCP follow-ups; it warns rather than guessing when nothing is
+found. Verified output matches the earlier REA evidence
+(`mspaint.exe` SHA-256 `4428e7cd...`, package 11.2609.441.0).
+
+**Final verification:** `run.ps1` rebuilt both targets (0 warnings, 0 errors),
+`pr_selftest.exe` 93 checks / 0 FAIL, GUI smoke launched with title
+`PaintRebuild - Untitled`. No licence file, no cloud/AI/provenance module and
+no Microsoft binary is shipped or loaded by the project.
+
+**Commit:** 052365dbbb0efa18417e640ee372861fb086b006
+
 
 
 
