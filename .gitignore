@@ -1,0 +1,25 @@
+# Build output
+build/
+*.obj
+*.exe
+*.pdb
+*.ilk
+*.exp
+*.lib
+*.a
+*.o
+
+# Local per-machine manifests (rules v7 §9)
+GITIGNORED_FILES_*.md
+
+# Editor / OS debris
+.vs/
+.vscode/
+*.suo
+*.user
+Thumbs.db
+desktop.ini
+
+# Local scratch
+*.log
+*.tmp

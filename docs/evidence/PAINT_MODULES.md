@@ -1,0 +1,95 @@
+# Paint module map from REA (observations, 2026-11-27)
+
+Source: installed `Microsoft.Paint 11.2609.441.0` (this machine). All facts below
+are **static observations** from shipped PE exports; behavior is inferred only
+where marked. No Microsoft code or assets are copied into this project.
+
+## Artifact identity (verified)
+- `mspaint.exe` SHA-256 `4428e7cd7a4486c41ff8e9a497def906b9e2630ef9603f4018416beacd813db7`
+  — imports (evidence `ev_75c406af851fbb60ea1be2acb430fce3b6dc4c65db50c4fd0c12863a63f79d89`,
+  complete: 79 DLLs, 1284 imports, 44 delay imports).
+- Own modules imported by the executable: `BasePaint.dll`, `PaintTools.dll`,
+  `ImageProcessing.dll`, `ProjectFile.dll`, `RestartRecovery.dll`, `PGS.dll`,
+  `PaintAIManager.dll`, `AIServices.dll`, `PlatformHelpers.dll`.
+
+## Module → responsibility (from exported symbol names)
+
+| Module | Evidence ID | Exports | Observed responsibility |
+|---|---|---|---|
+| `PaintTools.dll` | `ev_2771fce7cf12cd281d9fcffcc35cc34f63bfac2045011e79832a4ba5606a264e` | 122 | Tool classes and the `CPaintTool` virtual interface |
+| `BasePaint.dll` | `ev_4c7ccd8f9c9b806aba168aeefc967eb63904893b4e4b6ff3ec0f9b762aa10a9b` | 197 | Image model, drawing operations, shape factory, attributes, WIC/GDI+ utilities, telemetry |
+| `ImageProcessing.dll` | `ev_550f6d592f6eff763bcf27835a82ce7edd3bc8865b16f9e06f4206cece168fe2` | 11 | Codec/loader layer (`LoadFileImage`, `LoadStreamImage`, encoders/decoders, property store) |
+| `ProjectFile.dll` | `ev_97afa9f8475eba627c862ac37a4c44409db97660c5d991b60e91364dbb66ac7f` | 29 | Layered project file (`LayerStack`, `ImageLayer`, `Background`, `Save/Load/Backup/Restore`) |
+| `RestartRecovery.dll` | `ev_d587df81b2694c880716d75c00d2f571c95996114cd95c901df3f7d9099d048a` | 40 | Autorecovery (`RecoveryHandler`, `RecoveryData`, `RestartHandler`) |
+| `PaintUI.winmd` | `ev_a1d7d75bbff2a93c6e9753a8dd7a78d7d74420f06e0fa35981c16654bd908b89` | metadata complete | WinRT UI contract: 588 types, 4185 methods, 2128 properties |
+
+`PaintTools.dll` imports (evidence `ev_f837b3a3379cbc6abe41ea947fe04610f8105cfd997ef5e995f966c0b10a234e`, complete: 19 DLLs / 210 imports) include **gdiplus.dll**, `BasePaint.dll`, `PGS.dll`, `PlatformHelpers.dll`, `ole32.dll` — GDI+ is part of the tool rendering stack.
+
+## Observed tool classes (PaintTools.dll)
+`CPaintTool` (base), `AirBrushTool`, `CAutoShapeTool`, `CBezierTool`, `CBrushTool`,
+`CCalligraphicTool`, `CLineTool`, `CPaintPolygonTool`, `CPencilTool`, `CRectTool`,
+`CShapeTool`, `CSkeletalStrokeTool`, `CStrokeTool`, `EraserTool`, `FloodTool`,
+`FreeFormSelectionTool`, `GenerativeFillTool`, `InactiveTool`, `MagicEraserTool`,
+`MaskBasedSelectionTool`, `ModifiableTool`, `NewGenerativeFillTool`,
+`ObjectSelectTool`, `PickColorTool`, `SelectionTool`, `TextTool`, `ZoomTool`.
+
+## Observed `CPaintTool` virtual surface
+`ActivateAsync`, `DeactivateAsync`, `CanBePreviousTool`, `ToggleWithPrevious`,
+`Kind`, `Id`, `CursorId`, `GetCursorVisual`, `GetThickness` / `SetThickness`,
+`GetThicknessItemList`, `GetToleranceAttributeId`, `GetOpacityAttributeId`,
+`StartPreview` / `EndPreview`, `OnStylusDown/Move/Up/InRange/OutOfRange`,
+`OnDeltaStarted/Movement/Stopped`, `OnKeyDown`, `OnTab`, `OnCancel`, `OnClear`,
+`OnFocus`, `OnResize`, `OnRotate`, `OnSkew`, `OnFlipHorizontal/Vertical`,
+`OnInvertColor`, `OnInvertSelection`, `OnSystemEvent`, `AdjustPointsForConstraint`,
+`Query(TOOLACTION)`, `IsDrawing`, `IsEditing`, `IsCreatingOrEditing`,
+`HasBeenModified`, `SelectAll`, `ReplaceContent`, `RegisterPaintAppServices`.
+
+**Inference:** the workflow is a tool state machine driven by stylus/pointer
+events with per-tool attributes (thickness, tolerance, opacity) and preview
+commits — not a sequence of modal dialogs. Our `src/tools/tool.h` mirrors this.
+
+## Observed operations (BasePaint.dll)
+`CDrawStrokeOperation`, `CDrawLineOperation`, `CDrawBezierOperation`,
+`CDrawPolygonOperation`, `CDrawShapeOperation`, `CDrawRectAutoShapeOperation`,
+`CDrawAutoShapeOperation`, `CapsuleStrokeOperation`, `EraserStrokeOperation`,
+`EraserOperation`, `DrawAirBrushOperation`, `FloodFillOperation`,
+`StampStrokeOperation`, `TextToolOperation`, `SelectionOperation`,
+`MaskBasedSelectionOperation`, `ObjectSelectOperation`, `GenerativeFillOperation`,
+`ModifiableToolOperation`.
+
+**Inference:** operations are the undoable units; tools create operations and
+commit them. Our `src/core/operation.h` mirrors this split.
+
+## Observed `Image` API (BasePaint.dll)
+`Create`, `Bitmap`, `Graphics`, `HBitmap`, `Hdc`, `D2DBitmap`, `WicBitmap`,
+`Size`, `Clear`, `Crop(RECT, ...)`, `Resize(SIZE, ResizeMode, ResizeDirection)`,
+`Rotate(double)`, `HorizontalFlip`, `VerticalFlip`, `HorizontalSkew(int)`,
+`VerticalSkew(int)`, `InvertColors`, `HasTransparentPixels`,
+`CommitD2DBitmapChanges`, `InvalidateD2DBitmap`.
+
+## Observed shape factory (BasePaint.dll)
+`CreateRectangle`, `CreateRoundedRectangle`, `CreateEllipse`, `CreateTriangle`,
+`CreateDiamond`, `CreatePentagon`, `CreateHexagon`, `CreateFivePointedStar`,
+`CreateFourPointedStar`, `CreateSixPointedStar`, `CreateHeart`, `CreateLightning`,
+`CreateLeftArrow`, `CreateRightArrow`, `CreateDownArrow`, `CreateUpArrow`,
+`CreateCloudCallout`, `CreateOvalCallout`, `CreateRoundedRectangularCallout`.
+
+## Observed command surface (telemetry names, BasePaint.dll)
+`TraceFileNew`, `TraceFileOpen`, `TraceFileSave`, `TraceFileSaveAs`,
+`TracePrint`, `TracePrintPreview`, `TracePrintSetup`, `TraceProperties`,
+`TraceRedo`, `TraceDelete`, `TraceCrop`, `TraceFlip`, `TraceGrid`,
+`TraceRulers`, `TraceThumbnail`, `TraceFullScreen`, `TraceInvertColor`,
+`TraceImageTransparent`, `TraceSetWallpaper`, `TraceColorChanged`.
+
+## Utilities observed
+`NormalizeAngle`, `ToDegree`, `ToRadian`, `RotatePoint`, `IsValidSkewValue`,
+`ComputeRotatedDestinationSizeAndPoints`, `DIBNumColors`, `PaletteSize`,
+`IsWin30Dib`, WIC/GDI+ conversions (`CreateWicBitmap`, `CreateHBitmap`, `ToColor`,
+`WithAlpha`).
+
+## Unknowns (do not claim without evidence)
+- Exact default thickness/tolerance values and palette colors are not in the
+  export table; they must come from resources or runtime observation.
+- The `PaintUI.winmd` type names were not yet paged; command/resource IDs remain
+  unknown until `inspect_analysis_view` on `ev_a1d7...` is read.
+- Version 6.2410 (MSPaint bridge) module layout not yet compared.

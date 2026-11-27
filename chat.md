@@ -1,0 +1,70 @@
+# paint_rebuild — append-only session log
+
+Newest entries are appended at the bottom. One coherent change = one article +
+one commit + one push. Rules: `general_rules_read_first_v7.md`.
+
+## 2026-11-27 — Session 1 — Stage 0: scaffold, rules v7, toolchain-aware build
+
+**Request:** create a C++ `paint_rebuild` project faithful to the Microsoft Paint
+workflow, built in stages (core modules first, small high-yield first), with a
+log + push after every stage; carry rules v7 over from the sibling rebuild
+projects and reuse the Word/PowerPoint-rebuild approaches where useful; use
+REA/MCP as an evidence source; do not ask questions until finished.
+
+**Decisions / rationale:**
+- Location `E:\projects\paint_rebuild` (sibling of `word_rebuild_v1/v2`).
+- Remote created on GitHub as `wadoodaref/paint_rebuild` (private, matching
+  `word_rebuild_v2`) using the stored GitHub credential on this machine; no
+  credential is written into the repo.
+- `general_rules_read_first_v7.md` copied verbatim from `LightWord_v4`, the same
+  file the sibling rebuild projects carry. `chat.md`, `PROJECT_PLAN.md`,
+  `HANDOFF_CONTINUATION_PROMPT.md`, `run.ps1` and `build.ps1` created at project
+  start per rules §6.
+- Build script mirrors the Word-rebuild approach: auto-detect MSVC `vcvars64`
+  or a portable MinGW-w64 `g++`, zero-dependency C++17 core, headless selftest
+  first, Win32 app added in a later stage.
+- Stage 0 deliberately builds only the selftest harness: it is the smallest
+  end-to-end verification of the toolchain and the commit/push loop.
+
+**Files:** `.gitignore`, `general_rules_read_first_v7.md`, `chat.md`,
+`PROJECT_PLAN.md`, `HANDOFF_CONTINUATION_PROMPT.md`, `interrupted.md`,
+`README.md`, `build.ps1`, `run.ps1`, `src/tests/selftest.cpp`,
+`docs/evidence/REA_SOURCES.md`.
+
+## 2026-11-27 — Session 2 — Foundation tranche (Stages 0–3): REA evidence + core model + operations + tools
+
+**Request continuation:** "use rea/mcp and be faithful to source workflow and
+modules." No questions asked, per instruction.
+
+**REA work (before writing code):** inspected the installed Paint 11.2609.441.0
+artifacts with REA/MCP. `inspect_pe_imports` on `mspaint.exe` revealed Paint's
+own modules; `inspect_native_exports` on `PaintTools.dll` (122 exports),
+`BasePaint.dll` (197), `ImageProcessing.dll` (11), `ProjectFile.dll` (29),
+`RestartRecovery.dll` (40) gave the tool classes, `CPaintTool` virtual surface,
+`Image` API, shape factory, operation classes, telemetry command names and
+layer/recovery models. All observations, evidence IDs and unknowns are in
+`docs/evidence/PAINT_MODULES.md`. `PaintUI.winmd` metadata was inspected; its
+full type list exceeded the MCP response budget and was left as an explicit
+unknown rather than guessed.
+
+**Implementation (fresh C++, same module boundaries):**
+- `src/core/geometry.h`, `color.h`, `event.h` — POINT/SIZE/RECT analogues, ARGB
+  helpers, `IPaintListener`.
+- `src/core/image.h/.cpp` — `Image` with Crop/Resize/Rotate/Flip/Skew/
+  InvertColors/Blit and the observed geometry utilities.
+- `src/core/attributes.h` — `CAttributeStore` (thickness/tolerance/opacity).
+- `src/core/operation.h/.cpp` — `PatchOperation`/`SnapshotOperation` and
+  `COperationStock` undo/redo with dirty tracking (BasePaint operation split).
+- `src/tools/tool.h/.cpp` — `CPaintTool` with `OnStylusDown/Move/Up`,
+  `OnKeyDown`, `OnCancel`, preview, thickness/tolerance/opacity; concrete
+  pencil, brush, airbrush, calligraphic, eraser, flood fill, pick colour, line,
+  rect/ellipse, selection, zoom and text tools.
+- `build.ps1`/`run.ps1` fixed to build from `build\`; MSVC `vcvars64` auto-
+  detected at the x86 BuildTools path (a portable MinGW-w64 was also staged
+  as fallback because none was initially on PATH).
+
+**Verification:** `build.ps1` — 0 warnings, 0 errors (MSVC 14.44);
+`pr_selftest.exe` — **72 checks, 0 FAIL** (geometry, colour, attributes, image
+transforms, undo/redo, all core tools). REA evidence IDs cited in the docs.
+
+**Commit:** `6f47fa71e019da3b4e4712eed7197050a74e8eb3`
