@@ -303,7 +303,26 @@ brush thickness (1–40, synced to `CAttributeStore` and the live tool) and zoom
 **Verification:** MSVC build 0 warnings/0 errors (both targets); selftest 100
 checks, 0 FAIL; GUI smoke launched with title `PaintRebuild - Untitled`.
 
-**Commit:** e7de9c7c98c2517ea28174209644042c351bcee6
+**Commit:** e7de9c7c98c2517ea28174209644042c351bcee6 (`4d24e7a`)
+
+## 2026-11-27 — Session 15 — Paint-style ribbon and rulers
+
+**Change:** added a top command ribbon (Home/View/Image tab labels, quick
+access Undo/Redo/New/Open/Save and tool buttons wired to the existing command
+IDs) and optional horizontal/vertical canvas rulers with image-pixel ticks,
+both derived from the source UI surfaces (`Ruler`, `CanvasActionsViewModel`,
+toolbar names). View menu gained `Show Ruler` and `Show Ribbon` toggles.
+Canvas/tool-box layout shifts down when the ribbon is visible.
+
+**Incident:** an edit attempt briefly truncated `src/app/main.cpp` to 0 bytes;
+it was immediately restored from commit `4d24e7a` before any further work, and
+all ribbon changes were reapplied and verified.
+
+**Verification:** MSVC build 0 warnings/0 errors (both targets); selftest 100
+checks, 0 FAIL; GUI smoke launched with title `PaintRebuild - Untitled`.
+
+**Commit:** c2c36d783e519d4c04cc637a936ac68aaf4be006
+
 
 
 

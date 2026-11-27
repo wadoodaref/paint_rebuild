@@ -32,6 +32,41 @@ namespace {
 constexpr int kToolBoxWidth = 64;
 constexpr int kPaletteHeight = 76;
 constexpr int kStatusHeight = 24;
+constexpr int kRibbonHeight = 56;
+
+bool g_ribbonVisible = true;
+bool g_rulerVisible = false;
+
+struct RibbonButton {
+    RECT rect;
+    int command = 0;
+    const wchar_t* label = nullptr;
+};
+
+std::vector<RibbonButton> RibbonButtons() {
+    std::vector<RibbonButton> buttons;
+    const int y = 26;
+    const auto add = [&](int x, int w, int command, const wchar_t* label) {
+        buttons.push_back(RibbonButton{RECT{x, y, x + w, y + 24}, command, label});
+    };
+    add(70, 46, 200, L"Undo");
+    add(120, 46, 201, L"Redo");
+    add(180, 46, 100, L"New");
+    add(230, 46, 101, L"Open");
+    add(280, 46, 102, L"Save");
+    add(360, 54, 800, L"Select");
+    add(418, 54, 806, L"Pencil");
+    add(476, 54, 802, L"Eraser");
+    add(534, 54, 803, L"Fill");
+    add(592, 54, 804, L"Picker");
+    add(650, 54, 805, L"Zoom");
+    add(730, 54, 807, L"Brush");
+    add(788, 54, 808, L"Airbrush");
+    add(870, 54, 811, L"Line");
+    add(928, 54, 814, L"Rect");
+    add(986, 54, 815, L"Oval");
+    return buttons;
+}
 
 enum class StatusButton { BrushMinus, BrushPlus, ZoomMinus, ZoomPlus };
 
@@ -169,7 +204,8 @@ void WholeImageOperation(OperationKind kind, const std::function<void(Image&)>& 
 RECT CanvasRect() {
     RECT client;
     GetClientRect(g.hwnd, &client);
-    return RECT{kToolBoxWidth + 4, 4, client.right - 4,
+    const int top = g_ribbonVisible ? kRibbonHeight + 4 : 4;
+    return RECT{kToolBoxWidth + 4, top, client.right - 4,
                 client.bottom - kPaletteHeight - kStatusHeight - 4};
 }
 
@@ -232,7 +268,8 @@ void DrawToolBox(HDC hdc) {
     DeleteObject(face);
     for (std::size_t i = 0; i < kTools.size(); ++i) {
         const int x = 4 + (static_cast<int>(i) / 9) * 28;
-        const int y = 6 + (static_cast<int>(i) % 9) * 30;
+        const int y = (g_ribbonVisible ? kRibbonHeight + 6 : 6) +
+                      (static_cast<int>(i) % 9) * 30;
         const bool selected = kTools[i] == g.toolKind;
         HBRUSH brush = CreateSolidBrush(selected ? RGB(180, 200, 235) : RGB(225, 225, 225));
         FillRectValue(hdc, RECT{x, y, x + 26, y + 26}, brush);
@@ -317,6 +354,76 @@ void DrawStatus(HDC hdc) {
     }
 }
 
+void DrawRibbon(HDC hdc) {
+    if (!g_ribbonVisible) return;
+    RECT client;
+    GetClientRect(g.hwnd, &client);
+    HBRUSH face = CreateSolidBrush(RGB(245, 245, 245));
+    FillRectValue(hdc, RECT{0, 0, client.right, kRibbonHeight}, face);
+    DeleteObject(face);
+    SetBkMode(hdc, TRANSPARENT);
+    const wchar_t* tabs[] = {L"Home", L"View", L"Image"};
+    for (int i = 0; i < 3; ++i) {
+        const int x = 80 + i * 80;
+        TextOutW(hdc, x, 4, tabs[i], static_cast<int>(wcslen(tabs[i])));
+        if (i == 0) {
+            HPEN pen = CreatePen(PS_SOLID, 2, RGB(0, 120, 215));
+            const HPEN old = static_cast<HPEN>(SelectObject(hdc, pen));
+            MoveToEx(hdc, x, 22, nullptr);
+            LineTo(hdc, x + 48, 22);
+            SelectObject(hdc, old);
+            DeleteObject(pen);
+        }
+    }
+    const int separators[] = {350, 720, 850};
+    HPEN line = CreatePen(PS_SOLID, 1, RGB(200, 200, 200));
+    const HPEN oldLine = static_cast<HPEN>(SelectObject(hdc, line));
+    for (const int sx : separators) {
+        MoveToEx(hdc, sx, 4, nullptr);
+        LineTo(hdc, sx, kRibbonHeight - 4);
+    }
+    SelectObject(hdc, oldLine);
+    DeleteObject(line);
+    for (const auto& button : RibbonButtons()) {
+        FillRectValue(hdc, button.rect, static_cast<HBRUSH>(GetStockObject(WHITE_BRUSH)));
+        Rectangle(hdc, button.rect.left, button.rect.top, button.rect.right, button.rect.bottom);
+        RECT text = button.rect;
+        DrawTextW(hdc, button.label, static_cast<int>(wcslen(button.label)), &text,
+                  DT_CENTER | DT_VCENTER | DT_SINGLELINE);
+    }
+}
+
+void DrawRuler(HDC hdc, const RECT& canvas) {
+    if (!g_rulerVisible) return;
+    const int ruler = 18;
+    HBRUSH face = CreateSolidBrush(RGB(235, 235, 235));
+    FillRectValue(hdc, RECT{canvas.left, canvas.top, canvas.right, canvas.top + ruler}, face);
+    FillRectValue(hdc, RECT{canvas.left, canvas.top, canvas.left + ruler, canvas.bottom}, face);
+    DeleteObject(face);
+    HPEN pen = CreatePen(PS_SOLID, 1, RGB(90, 90, 90));
+    const HPEN old = static_cast<HPEN>(SelectObject(hdc, pen));
+    for (int px = 0; px <= g.image->width(); px += 10) {
+        const int x = canvas.left + px * g.zoom;
+        if (x > canvas.right) break;
+        const int length = (px % 100 == 0) ? 10 : 5;
+        MoveToEx(hdc, x, canvas.top + ruler, nullptr);
+        LineTo(hdc, x, canvas.top + ruler - length);
+        if (px % 100 == 0 && px > 0) {
+            const std::wstring label = std::to_wstring(px);
+            TextOutW(hdc, x + 2, canvas.top + 1, label.c_str(), static_cast<int>(label.size()));
+        }
+    }
+    for (int py = 0; py <= g.image->height(); py += 10) {
+        const int y = canvas.top + py * g.zoom;
+        if (y > canvas.bottom) break;
+        const int length = (py % 100 == 0) ? 10 : 5;
+        MoveToEx(hdc, canvas.left + ruler, y, nullptr);
+        LineTo(hdc, canvas.left + ruler - length, y);
+    }
+    SelectObject(hdc, old);
+    DeleteObject(pen);
+}
+
 void Paint(HWND hwnd) {
     PAINTSTRUCT ps;
     HDC hdc = BeginPaint(hwnd, &ps);
@@ -328,6 +435,8 @@ void Paint(HWND hwnd) {
     FillRect(mem, &client, static_cast<HBRUSH>(GetStockObject(WHITE_BRUSH)));
     const RECT canvas = CanvasRect();
     DrawCanvas(mem, canvas);
+    DrawRuler(mem, canvas);
+    DrawRibbon(mem);
     DrawToolBox(mem);
     DrawPalette(mem);
     DrawStatus(mem);
@@ -342,7 +451,8 @@ bool HandleToolBoxClick(int x, int y) {
     if (x < 0 || x >= kToolBoxWidth) return false;
     for (std::size_t i = 0; i < kTools.size(); ++i) {
         const int bx = 4 + (static_cast<int>(i) / 9) * 28;
-        const int by = 6 + (static_cast<int>(i) % 9) * 30;
+        const int by = (g_ribbonVisible ? kRibbonHeight + 6 : 6) +
+                       (static_cast<int>(i) % 9) * 30;
         if (x >= bx && x <= bx + 26 && y >= by && y <= by + 26) {
             FinishTextEditor(true);
             g.toolKind = kTools[i];
@@ -429,6 +539,22 @@ void DoCommand(WORD id) {
     if (id >= 600 && id <= 618) {
         g_shapeKind = static_cast<ShapeKind>(id - 600);
         g.toolKind = PaintToolKind::AutoShape;
+        RebuildTool();
+        InvalidateRect(g.hwnd, nullptr, TRUE);
+        return;
+    }
+    if (id == 307) {
+        g_rulerVisible = !g_rulerVisible;
+        InvalidateRect(g.hwnd, nullptr, TRUE);
+        return;
+    }
+    if (id == 308) {
+        g_ribbonVisible = !g_ribbonVisible;
+        InvalidateRect(g.hwnd, nullptr, TRUE);
+        return;
+    }
+    if (id >= 800 && id <= 817) {
+        g.toolKind = kTools[id - 800];
         RebuildTool();
         InvalidateRect(g.hwnd, nullptr, TRUE);
         return;
@@ -597,6 +723,8 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam) 
             AppendMenuW(view, MF_STRING, 303, L"Zoom &800%");
             AppendMenuW(view, MF_SEPARATOR, 0, nullptr);
             AppendMenuW(view, MF_STRING, 304, L"Show &Grid");
+            AppendMenuW(view, MF_STRING, 307, L"Show &Ruler");
+            AppendMenuW(view, MF_STRING, 308, L"Show &Ribbon");
             HMENU imageMenu = CreatePopupMenu();
             AppendMenuW(imageMenu, MF_STRING, 400, L"&Invert Colors");
             AppendMenuW(imageMenu, MF_STRING, 401, L"Flip &Horizontal");
@@ -693,6 +821,15 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam) 
                     g.zoom = std::max(1, std::min(16, zoomIn ? g.zoom * 2 : g.zoom / 2));
                     InvalidateRect(hwnd, nullptr, TRUE);
                     return 0;
+                }
+                return 0;
+            }
+            if (g_ribbonVisible && y < kRibbonHeight) {
+                for (const auto& button : RibbonButtons()) {
+                    if (HitRect(button.rect, x, y)) {
+                        DoCommand(button.command);
+                        return 0;
+                    }
                 }
                 return 0;
             }
