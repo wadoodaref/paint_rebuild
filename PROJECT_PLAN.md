@@ -74,3 +74,5 @@ autorecovery. We reimplement these boundaries in fresh C++, not copy them.
   operation; all 8 stages complete, build clean, 93/93, GUI smoke OK.
 - 2026-11-27 (UI from source): 19 REA-observed auto-shapes + source-aligned
   tool labels; build clean, selftest 100/100, GUI smoke OK.
+- 2026-11-27 (UI from source 2): nine brush presets + clickable brush-size and
+  zoom controls; build clean, selftest 100/100, GUI smoke OK.

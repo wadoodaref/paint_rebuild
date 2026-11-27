@@ -285,7 +285,26 @@ shape selftests.
 **Verification:** MSVC build 0 warnings/0 errors (both targets); selftest **100
 checks, 0 FAIL**; GUI smoke launched with title `PaintRebuild - Untitled`.
 
-**Commit:** 7d9561249ed71fe555e8b22b61794a0bb816d833
+**Commit:** 7d9561249ed71fe555e8b22b61794a0bb816d833 (`78289f9`)
+
+## 2026-11-27 — Session 14 — Source brush presets + status-bar size/zoom controls
+
+**Evidence:** the vendored `PaintUI.pri` string inventory named brush variants
+`AirBrush`, `CalligraphyPen`, `OilBrushSwoosh`, `WaterColorSwoosh`,
+`MarkerSwoosh`, `CrayonSwoosh`, `NaturalPencilSwoosh`, plus `ZoomSlider` /
+`ZoomIn` / `ZoomOut` and `BrushSizeSlider` (names only; no assets copied).
+
+**Change:** added `OilBrush`, `Watercolor`, `Marker`, `Crayon` and
+`NaturalPencil` tool kinds backed by `CStrokeTool` presets, a `Brushes` menu
+with all nine source names, and clickable `-`/`+` boxes in the status bar for
+brush thickness (1–40, synced to `CAttributeStore` and the live tool) and zoom
+(100%–1600%). All labels come from the observed names.
+
+**Verification:** MSVC build 0 warnings/0 errors (both targets); selftest 100
+checks, 0 FAIL; GUI smoke launched with title `PaintRebuild - Untitled`.
+
+**Commit:** e7de9c7c98c2517ea28174209644042c351bcee6
+
 
 
 

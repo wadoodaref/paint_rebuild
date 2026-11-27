@@ -269,6 +269,13 @@ std::unique_ptr<CPaintTool> CreatePaintTool(ToolContext& context, PaintToolKind 
             return std::make_unique<CStrokeTool>(context, kind, false, false, true);
         case PaintToolKind::Calligraphic:
             return std::make_unique<CStrokeTool>(context, kind, false, true, false);
+        case PaintToolKind::OilBrush:
+        case PaintToolKind::Marker:
+        case PaintToolKind::Crayon:
+        case PaintToolKind::NaturalPencil:
+            return std::make_unique<CStrokeTool>(context, kind, false, false, false);
+        case PaintToolKind::Watercolor:
+            return std::make_unique<CStrokeTool>(context, kind, false, false, true);
         case PaintToolKind::Eraser:
             return std::make_unique<CStrokeTool>(context, kind, true, true, false);
         case PaintToolKind::FloodFill:
@@ -306,6 +313,11 @@ const char* ToolName(PaintToolKind kind) {
         case PaintToolKind::Brush: return "Brush";
         case PaintToolKind::Airbrush: return "Airbrush";
         case PaintToolKind::Calligraphic: return "Calligraphy pen";
+        case PaintToolKind::OilBrush: return "Oil brush";
+        case PaintToolKind::Watercolor: return "Watercolor";
+        case PaintToolKind::Marker: return "Marker";
+        case PaintToolKind::Crayon: return "Crayon";
+        case PaintToolKind::NaturalPencil: return "Natural pencil";
         case PaintToolKind::Eraser: return "Eraser";
         case PaintToolKind::FloodFill: return "Fill with color";
         case PaintToolKind::PickColor: return "Color picker";

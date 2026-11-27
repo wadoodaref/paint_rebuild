@@ -33,6 +33,25 @@ constexpr int kToolBoxWidth = 64;
 constexpr int kPaletteHeight = 76;
 constexpr int kStatusHeight = 24;
 
+enum class StatusButton { BrushMinus, BrushPlus, ZoomMinus, ZoomPlus };
+
+RECT StatusButtonRect(HWND hwnd, StatusButton button) {
+    RECT client;
+    GetClientRect(hwnd, &client);
+    const int top = client.bottom - kStatusHeight + 2;
+    switch (button) {
+        case StatusButton::BrushMinus: return RECT{client.right - 260, top, client.right - 236, top + 18};
+        case StatusButton::BrushPlus:  return RECT{client.right - 232, top, client.right - 208, top + 18};
+        case StatusButton::ZoomMinus:  return RECT{client.right - 120, top, client.right - 96, top + 18};
+        case StatusButton::ZoomPlus:   return RECT{client.right - 92, top, client.right - 68, top + 18};
+    }
+    return RECT{};
+}
+
+bool HitRect(const RECT& r, int x, int y) {
+    return x >= r.left && x < r.right && y >= r.top && y < r.bottom;
+}
+
 struct AppState {
     std::unique_ptr<Image> image;
     std::unique_ptr<ToolContext> context;
@@ -278,6 +297,24 @@ void DrawStatus(HDC hdc) {
                               std::to_wstring(g.zoom) + L"00%";
     TextOutW(hdc, 8, top + 4, (text + coords + size).c_str(),
              static_cast<int>((text + coords + size).size()));
+
+    int thickness = 1;
+    g.attributes.GetValue(1, thickness);
+    const std::wstring brushLabel = L"Brush " + std::to_wstring(thickness);
+    TextOutW(hdc, client.right - 320, top + 4, brushLabel.c_str(),
+             static_cast<int>(brushLabel.size()));
+    const std::wstring zoomLabel = L"Zoom " + std::to_wstring(g.zoom * 100) + L"%";
+    TextOutW(hdc, client.right - 180, top + 4, zoomLabel.c_str(),
+             static_cast<int>(zoomLabel.size()));
+    const StatusButton buttons[] = {StatusButton::BrushMinus, StatusButton::BrushPlus,
+                                    StatusButton::ZoomMinus, StatusButton::ZoomPlus};
+    const wchar_t* glyphs[] = {L"-", L"+", L"-", L"+"};
+    for (int i = 0; i < 4; ++i) {
+        const RECT box = StatusButtonRect(g.hwnd, buttons[i]);
+        FillRect(hdc, &box, static_cast<HBRUSH>(GetStockObject(WHITE_BRUSH)));
+        Rectangle(hdc, box.left, box.top, box.right, box.bottom);
+        DrawTextW(hdc, glyphs[i], 1, const_cast<RECT*>(&box), DT_CENTER | DT_VCENTER | DT_SINGLELINE);
+    }
 }
 
 void Paint(HWND hwnd) {
@@ -392,6 +429,16 @@ void DoCommand(WORD id) {
     if (id >= 600 && id <= 618) {
         g_shapeKind = static_cast<ShapeKind>(id - 600);
         g.toolKind = PaintToolKind::AutoShape;
+        RebuildTool();
+        InvalidateRect(g.hwnd, nullptr, TRUE);
+        return;
+    }
+    if (id >= 700 && id <= 708) {
+        static const PaintToolKind brushTools[] = {
+            PaintToolKind::Pencil, PaintToolKind::Brush, PaintToolKind::Airbrush,
+            PaintToolKind::Calligraphic, PaintToolKind::OilBrush, PaintToolKind::Watercolor,
+            PaintToolKind::Marker, PaintToolKind::Crayon, PaintToolKind::NaturalPencil};
+        g.toolKind = brushTools[id - 700];
         RebuildTool();
         InvalidateRect(g.hwnd, nullptr, TRUE);
         return;
@@ -567,6 +614,12 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam) 
             HMENU shapes = CreatePopupMenu();
             for (int i = 0; i < 19; ++i)
                 AppendMenuW(shapes, MF_STRING, 600 + i, shapeLabels[i]);
+            static const wchar_t* brushLabels[] = {
+                L"Pencil", L"Brush", L"Airbrush", L"Calligraphy pen", L"Oil brush",
+                L"Watercolor", L"Marker", L"Crayon", L"Natural pencil"};
+            HMENU brushes = CreatePopupMenu();
+            for (int i = 0; i < 9; ++i)
+                AppendMenuW(brushes, MF_STRING, 700 + i, brushLabels[i]);
             HMENU colors = CreatePopupMenu();
             AppendMenuW(colors, MF_STRING, 501, L"&Edit Colors...");
             HMENU help = CreatePopupMenu();
@@ -576,6 +629,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam) 
             AppendMenuW(menu, MF_POPUP, reinterpret_cast<UINT_PTR>(view), L"&View");
             AppendMenuW(menu, MF_POPUP, reinterpret_cast<UINT_PTR>(imageMenu), L"&Image");
             AppendMenuW(menu, MF_POPUP, reinterpret_cast<UINT_PTR>(shapes), L"&Shapes");
+            AppendMenuW(menu, MF_POPUP, reinterpret_cast<UINT_PTR>(brushes), L"&Brushes");
             AppendMenuW(menu, MF_POPUP, reinterpret_cast<UINT_PTR>(colors), L"&Colors");
             AppendMenuW(menu, MF_POPUP, reinterpret_cast<UINT_PTR>(help), L"&Help");
             SetMenu(hwnd, menu);
@@ -619,6 +673,29 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam) 
         case WM_LBUTTONDOWN: {
             const int x = GET_X_LPARAM(lParam);
             const int y = GET_Y_LPARAM(lParam);
+            RECT clientRect;
+            GetClientRect(hwnd, &clientRect);
+            if (y >= clientRect.bottom - kStatusHeight) {
+                if (HitRect(StatusButtonRect(hwnd, StatusButton::BrushMinus), x, y) ||
+                    HitRect(StatusButtonRect(hwnd, StatusButton::BrushPlus), x, y)) {
+                    int thickness = 1;
+                    g.attributes.GetValue(1, thickness);
+                    thickness += HitRect(StatusButtonRect(hwnd, StatusButton::BrushPlus), x, y) ? 1 : -1;
+                    thickness = std::max(1, std::min(40, thickness));
+                    g.attributes.SetValue(1, thickness);
+                    if (g.tool) g.tool->SetThickness(static_cast<unsigned>(thickness));
+                    InvalidateRect(hwnd, nullptr, TRUE);
+                    return 0;
+                }
+                if (HitRect(StatusButtonRect(hwnd, StatusButton::ZoomMinus), x, y) ||
+                    HitRect(StatusButtonRect(hwnd, StatusButton::ZoomPlus), x, y)) {
+                    const bool zoomIn = HitRect(StatusButtonRect(hwnd, StatusButton::ZoomPlus), x, y);
+                    g.zoom = std::max(1, std::min(16, zoomIn ? g.zoom * 2 : g.zoom / 2));
+                    InvalidateRect(hwnd, nullptr, TRUE);
+                    return 0;
+                }
+                return 0;
+            }
             if (HandleToolBoxClick(x, y)) return 0;
             if (HandlePaletteClick(x, y, false)) return 0;
             const pr::Point p = ToImagePoint(x, y);
