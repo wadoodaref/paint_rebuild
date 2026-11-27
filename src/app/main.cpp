@@ -17,6 +17,8 @@
 
 #include "../core/clipboard.h"
 #include "../core/codec.h"
+#include "clipboard_win.h"
+#include "dialogs_win.h"
 #include "../core/image.h"
 #include "../core/operation.h"
 #include "../tools/tool.h"
@@ -359,22 +361,30 @@ void DoCommand(WORD id) {
             break;
         case 202:
         case 203: {
-            const Rect r = g.tool ? g.tool->SelectionRect() : Rect{0, 0, g.image->width(), g.image->height()};
-            g.clipboard.Copy(*g.image, (r.w > 0 && r.h > 0)
-                                            ? r
-                                            : Rect{0, 0, g.image->width(), g.image->height()});
-            if (id == 202) {
+            Rect r = g.tool ? g.tool->SelectionRect() : Rect{0, 0, g.image->width(), g.image->height()};
+            if (r.w <= 0 || r.h <= 0) r = Rect{0, 0, g.image->width(), g.image->height()};
+            const bool copied = CopyImageToClipboard(g.hwnd, *g.image, r);
+            if (!copied) g.clipboard.Copy(*g.image, r);  // headless fallback
+            if (id == 202 && (copied || g.clipboard.HasContent())) {
                 WholeImageOperation(OperationKind::Erase, [&](Image& image) {
                     image.FillRect(r, g.background);
                 });
             }
             break;
         }
-        case 204:
-            WholeImageOperation(OperationKind::FillRectangle, [&](Image& image) {
-                g.clipboard.Paste(image, Point{0, 0});
-            });
+        case 204: {
+            auto pasted = PasteImageFromClipboard();
+            if (pasted) {
+                WholeImageOperation(OperationKind::FillRectangle, [&](Image& image) {
+                    image.Blit(*pasted, Point{0, 0});
+                });
+            } else if (g.clipboard.HasContent()) {
+                WholeImageOperation(OperationKind::FillRectangle, [&](Image& image) {
+                    g.clipboard.Paste(image, Point{0, 0});
+                });
+            }
             break;
+        }
         case 205:
             WholeImageOperation(OperationKind::Clear, [&](Image& image) {
                 image.Clear(g.background);
@@ -400,11 +410,59 @@ void DoCommand(WORD id) {
         case 402: WholeImageOperation(OperationKind::FlipVertical, [](Image& i) { i.VerticalFlip(); }); break;
         case 403: WholeImageOperation(OperationKind::Rotate, [](Image& i) { i.Rotate(1.5707963267948966); }); break;
         case 404: {
-            const std::wstring text = L"Image attributes\n\n" + std::to_wstring(g.image->width()) +
-                                      L" x " + std::to_wstring(g.image->height()) + L" px\n" +
-                                      std::to_wstring(static_cast<int>(g.image->HasTransparentPixels())) +
-                                      L" (transparent pixels present)";
-            MessageBoxW(g.hwnd, text.c_str(), L"Attributes", MB_OK);
+            int width = g.image->width();
+            int height = g.image->height();
+            if (ShowAttributesDialog(g.hwnd, width, height) && width > 0 && height > 0 &&
+                (width != g.image->width() || height != g.image->height())) {
+                WholeImageOperation(OperationKind::Resize, [&](Image& image) {
+                    image.Resize(Size{width, height}, ResizeMode::Nearest, ResizeDirection::Both);
+                });
+            }
+            break;
+        }
+        case 405: {
+            StretchSkewOptions options;
+            if (!ShowStretchSkewDialog(g.hwnd, options)) break;
+            int width = g.image->width() * std::max(1, options.horizontalPercent) / 100;
+            int height = g.image->height() * std::max(1, options.verticalPercent) / 100;
+            if (width < 1) width = 1;
+            if (height < 1) height = 1;
+            WholeImageOperation(OperationKind::Resize, [&](Image& image) {
+                image.Resize(Size{width, height}, ResizeMode::Bilinear, ResizeDirection::Both);
+                if (options.skewHorizontal != 0) image.HorizontalSkew(options.skewHorizontal);
+                if (options.skewVertical != 0) image.VerticalSkew(options.skewVertical);
+            });
+            break;
+        }
+        case 406: {
+            FlipRotateOptions options;
+            if (!ShowFlipRotateDialog(g.hwnd, options)) break;
+            const auto choice = options.choice;
+            WholeImageOperation(OperationKind::FlipHorizontal, [&](Image& image) {
+                switch (choice) {
+                    case FlipRotateChoice::FlipHorizontal: image.HorizontalFlip(); break;
+                    case FlipRotateChoice::FlipVertical: image.VerticalFlip(); break;
+                    case FlipRotateChoice::Rotate90: image.Rotate(1.5707963267948966); break;
+                    case FlipRotateChoice::Rotate180: image.Rotate(3.1415926535897932); break;
+                    case FlipRotateChoice::Rotate270: image.Rotate(4.7123889803846899); break;
+                }
+            });
+            break;
+        }
+        case 501: {
+            CHOOSECOLORW color{};
+            color.lStructSize = sizeof(color);
+            color.hwndOwner = g.hwnd;
+            color.rgbResult = RGB(Red(g.foreground), Green(g.foreground), Blue(g.foreground));
+            static COLORREF customColors[16] = {};
+            color.lpCustColors = customColors;
+            color.Flags = CC_RGBINIT | CC_FULLOPEN;
+            if (ChooseColorW(&color)) {
+                g.foreground = MakeColor(GetRValue(color.rgbResult), GetGValue(color.rgbResult),
+                                         GetBValue(color.rgbResult), 255);
+                RebuildTool();
+                InvalidateRect(g.hwnd, nullptr, TRUE);
+            }
             break;
         }
         case 500:
@@ -449,13 +507,18 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam) 
             AppendMenuW(imageMenu, MF_STRING, 402, L"Flip &Vertical");
             AppendMenuW(imageMenu, MF_STRING, 403, L"Rotate &90°");
             AppendMenuW(imageMenu, MF_STRING, 404, L"&Attributes...");
+            AppendMenuW(imageMenu, MF_STRING, 405, L"&Stretch / Skew...");
+            AppendMenuW(imageMenu, MF_STRING, 406, L"Flip / &Rotate...");
             HMENU colors = CreatePopupMenu();
-            AppendMenuW(colors, MF_STRING, 500, L"&About...");
+            AppendMenuW(colors, MF_STRING, 501, L"&Edit Colors...");
+            HMENU help = CreatePopupMenu();
+            AppendMenuW(help, MF_STRING, 500, L"&About...");
             AppendMenuW(menu, MF_POPUP, reinterpret_cast<UINT_PTR>(file), L"&File");
             AppendMenuW(menu, MF_POPUP, reinterpret_cast<UINT_PTR>(edit), L"&Edit");
             AppendMenuW(menu, MF_POPUP, reinterpret_cast<UINT_PTR>(view), L"&View");
             AppendMenuW(menu, MF_POPUP, reinterpret_cast<UINT_PTR>(imageMenu), L"&Image");
-            AppendMenuW(menu, MF_POPUP, reinterpret_cast<UINT_PTR>(colors), L"&Help");
+            AppendMenuW(menu, MF_POPUP, reinterpret_cast<UINT_PTR>(colors), L"&Colors");
+            AppendMenuW(menu, MF_POPUP, reinterpret_cast<UINT_PTR>(help), L"&Help");
             SetMenu(hwnd, menu);
             NewDocument(800, 600);
             SetTitle();

@@ -41,10 +41,11 @@ powershell -ExecutionPolicy Bypass -File run.ps1
 - Stages 0–6 complete and pushed; stage 8 verification complete (see
   `PROJECT_PLAN.md`). All 8 documented stages have a committed article in
   `chat.md`.
+- Done in the latest stage: system clipboard `CF_DIB` bridge and real modal
+  Attributes / Stretch-Skew / Flip-Rotate / Edit Colors dialogs.
 - Remaining fidelity work (stage 7 backlog, not required for the workflow):
-  real Edit Colors / Stretch-Skew / Flip-Rotate dialogs, DirectWrite text
-  rendering, system clipboard `CF_DIB` bridge, autorecovery UI, and paging the
-  `PaintUI.winmd` type list through the REA CLI (MCP response budget blocked it).
+  DirectWrite text rendering, autorecovery UI, and paging the `PaintUI.winmd`
+  type list through the REA CLI (MCP response budget blocked it).
 - **Offline reference bundle** (no search needed on another PC):
   `reference/paint-11.2609.441.0/` — 11 verified core artifacts + `manifest.json`.
   Verify with `tools\rea\verify_reference.ps1`, list REA calls with

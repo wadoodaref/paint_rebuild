@@ -192,7 +192,25 @@ updated accordingly.
 and `inspect_local_reference.ps1` both run successfully. No source or build
 output changed; the selftest/app results from Session 6 still stand.
 
-**Commit:** 7a5b36cf7972c5f695bb917cb91bd83bbab6817d
+**Commit:** 7a5b36cf7972c5f695bb917cb91bd83bbab6817d (`0cef770`)
+
+## 2026-11-27 — Session 9 — Fidelity dialogs + system clipboard bridge
+
+**Change:** added `src/app/clipboard_win.cpp` (CF_DIB copy/paste with 24/32 bpp
+DIB parsing, bottom-up rows, headless fallback retained) and
+`src/app/dialogs_win.cpp` (real modal Stretch/Skew, Flip/Rotate and Attributes
+dialogs). Wired new menu items into the Win32 shell: `Image > Stretch / Skew...`,
+`Image > Flip / Rotate...`, `Image > Attributes...` (now resizes the image
+through an undoable `SnapshotOperation`), `Colors > Edit Colors...` (Win32
+`ChooseColorW`), and `Edit > Copy/Cut/Paste` now use the Windows system
+clipboard. `build.ps1` picks up the new app sources automatically via its
+`src\app\*.cpp` glob.
+
+**Verification:** MSVC build 0 warnings/0 errors (both targets); selftest 93
+checks, 0 FAIL; GUI smoke launched with title `PaintRebuild - Untitled`.
+
+**Commit:** 7be460af43866b8163b43e639cf90b8b2486ffe8
+
 
 
 
