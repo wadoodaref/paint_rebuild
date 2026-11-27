@@ -905,7 +905,27 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam) 
         case WM_RBUTTONDOWN: {
             const int x = GET_X_LPARAM(lParam);
             const int y = GET_Y_LPARAM(lParam);
-            HandlePaletteClick(x, y, true);
+            if (HandlePaletteClick(x, y, true)) return 0;
+            const RECT canvas = CanvasRect();
+            if (x >= canvas.left && x <= canvas.right && y >= canvas.top && y <= canvas.bottom) {
+                HMENU menu = CreatePopupMenu();
+                AppendMenuW(menu, MF_STRING, 202, L"Cut");
+                AppendMenuW(menu, MF_STRING, 203, L"Copy");
+                AppendMenuW(menu, MF_STRING, 204, L"Paste");
+                AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
+                AppendMenuW(menu, MF_STRING, 200, L"Undo");
+                AppendMenuW(menu, MF_STRING, 201, L"Redo");
+                AppendMenuW(menu, MF_STRING, 206, L"Select All");
+                AppendMenuW(menu, MF_STRING, 205, L"Clear Image");
+                AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
+                AppendMenuW(menu, MF_STRING, 405, L"Stretch / Skew...");
+                AppendMenuW(menu, MF_STRING, 406, L"Flip / Rotate...");
+                POINT screen{x, y};
+                ClientToScreen(hwnd, &screen);
+                TrackPopupMenuEx(menu, TPM_LEFTALIGN | TPM_RIGHTBUTTON, screen.x, screen.y,
+                                 hwnd, nullptr);
+                DestroyMenu(menu);
+            }
             return 0;
         }
         case WM_KEYDOWN: {

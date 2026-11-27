@@ -377,7 +377,22 @@ array. Added three selftest assertions for palette entries.
 **Verification:** MSVC build 0 warnings/0 errors (both targets); selftest **103
 checks, 0 FAIL**; GUI smoke launched with title `PaintRebuild - Untitled`.
 
-**Commit:** 350d5d05ab4b9c02f078de685f6593ab8f9fd4c5
+**Commit:** 350d5d05ab4b9c02f078de685f6593ab8f9fd4c5 (`ce3e071`)
+
+## 2026-11-27 — Session 20 — Canvas context menu
+
+**Change:** right-clicking the canvas now opens a Paint-style context menu
+(Cut/Copy/Paste, Undo/Redo, Select All, Clear Image, Stretch/Skew, Flip/Rotate)
+wired to the existing command IDs — the `CanvasContextMenuViewModel` analog.
+Right-click on the colour box still swaps foreground/background.
+
+**Verification:** MSVC build 0 warnings/0 errors (both targets); selftest 103
+checks, 0 FAIL; GUI smoke launched with title `PaintRebuild - Untitled`.
+This closes the remaining common workflow gap; only evidence-only details
+(palette literals absent from artifacts, numeric command IDs/CIL) remain open.
+
+**Commit:** 27234abf8a0467c321e37dac7e741792e3ae75f2
+
 
 
 
