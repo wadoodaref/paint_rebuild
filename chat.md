@@ -471,3 +471,17 @@ checks, 0 FAIL; GUI smoke launched `PaintRebuild - Untitled`.
 
 **Commit:** 9ed0011142dc84450594def92aa19b5442b2753a
 
+
+
+## 2026-11-27 ? Session 24 ? Image group fidelity, crop, brush/size menus
+
+**Change:** fixed Image command group to match Paint 11 UIA (Crop, Rotate,
+Flip, Resize and skew; BG removal slot omitted/excluded). Added Crop-to-selection
+handler (407) using `Image::Crop`. Wired Size button to a px menu and Brushes to
+a brush-type menu (Brush/Calligraphy/Airbrush/Oil/Crayon/Marker/Natural pencil/
+Watercolour) matching the 700-708 tool mapping.
+
+**Verification:** MSVC build 0 warnings/0 errors; selftest 103 checks, 0 FAIL.
+
+**Commit:** f4b9cfe42e063912b3be05e40a387d7dbf128242
+

@@ -324,14 +324,14 @@ CommandLayout BuildCommandLayout() {
     addBtn(x + 58, top + 8, 44, 62, 801, L"Free-form", "freeform.png", g.toolKind == PaintToolKind::FreeFormSelection);
     x += 112;
 
-    // Image group
+    // Image group (matches Paint 11: Crop, Rotate, Flip, Resize and skew; BG removal excluded)
     const int imgLeft = x;
     addBtn(x + 6, top + 8, 44, 40, 407, L"Crop", "select.png", false, true);
-    addBtn(x + 54, top + 8, 44, 40, 405, L"Resize", "resize.png", false, true);
-    addBtn(x + 102, top + 8, 44, 40, 406, L"Rotate", "rotate.png", false, true);
-    addBtn(x + 6, top + 52, 44, 40, 409, L"Flip", "flip.png", false, true);
-    addBtn(x + 54, top + 52, 90, 40, 403, L"Properties", "resize.png");
-    x += 154;
+    // BG removal slot omitted (AI feature, excluded)
+    addBtn(x + 56, top + 8, 52, 40, 406, L"Rotate", "rotate.png", false, true);
+    addBtn(x + 56, top + 52, 52, 40, 401, L"Flip", "flip.png", false, true);
+    addBtn(x + 114, top + 20, 52, 52, 405, L"Resize", "resize.png", false, true);
+    x += 174;
 
     // Tools group (2 rows x 3) - matches Paint 11 exactly
     const int toolsLeft = x;
@@ -435,9 +435,9 @@ void DrawCommandBar(HDC hdc) {
 
     // Group separators and labels
     struct GL { const wchar_t* n; int l; int r; } groups[] = {
-        {L"Selection", 8, 118}, {L"Image", 120, 272}, {L"Tools", 274, 408},
-        {L"Brushes", 410, 484}, {L"Shapes", 486, 780}, {L"Size", 782, 840},
-        {L"Colors", 842, 1172},
+        {L"Selection", 8, 120}, {L"Image", 122, 294}, {L"Tools", 296, 430},
+        {L"Brushes", 432, 506}, {L"Shapes", 508, 806}, {L"Size", 808, 866},
+        {L"Colors", 868, 1200},
     };
     for (auto& g_ : groups) {
         DrawVSeparator(hdc, g_.r, top, top + h);
@@ -736,10 +736,30 @@ void DoCommand(WORD id) {
     if (id == 9001) { g_shapeFilled = false; RebuildTool(); InvalidateRect(g.hwnd, nullptr, TRUE); return; }
     if (id == 9002) { g_shapeFilled = true; RebuildTool(); InvalidateRect(g.hwnd, nullptr, TRUE); return; }
     if (id == 9003) {
-        int t = 1; g.attributes.GetValue(1, t);
-        t = (t < 3) ? 3 : (t < 5) ? 5 : (t < 8) ? 8 : 1;
-        g.attributes.SetValue(1, t); if (g.tool) g.tool->SetThickness(static_cast<unsigned>(t));
-        InvalidateRect(g.hwnd, nullptr, TRUE); return;
+        HMENU m = CreatePopupMenu();
+        const int sizes[] = {1,3,5,8};
+        for (int i = 0; i < 4; ++i) AppendMenuW(m, MF_STRING, 9100 + sizes[i], (std::to_wstring(sizes[i]) + L"px").c_str());
+        POINT pt; GetCursorPos(&pt);
+        int sel = TrackPopupMenuEx(m, TPM_RETURNCMD | TPM_LEFTALIGN | TPM_TOPALIGN, pt.x, pt.y, g.hwnd, nullptr);
+        DestroyMenu(m);
+        if (sel >= 9101) { g.attributes.SetValue(1, sel - 9100); if (g.tool) g.tool->SetThickness(static_cast<unsigned>(sel - 9100)); InvalidateRect(g.hwnd, nullptr, TRUE); }
+        return;
+    }
+    if (id == 807) {
+        HMENU m = CreatePopupMenu();
+        AppendMenuW(m, MF_STRING, 701, L"Brush");
+        AppendMenuW(m, MF_STRING, 703, L"Calligraphy brush");
+        AppendMenuW(m, MF_STRING, 702, L"Airbrush");
+        AppendMenuW(m, MF_STRING, 704, L"Oil brush");
+        AppendMenuW(m, MF_STRING, 707, L"Crayon");
+        AppendMenuW(m, MF_STRING, 706, L"Marker");
+        AppendMenuW(m, MF_STRING, 708, L"Natural pencil");
+        AppendMenuW(m, MF_STRING, 705, L"Watercolour");
+        POINT pt; GetCursorPos(&pt);
+        int sel = TrackPopupMenuEx(m, TPM_RETURNCMD | TPM_LEFTALIGN | TPM_TOPALIGN, pt.x, pt.y, g.hwnd, nullptr);
+        DestroyMenu(m);
+        if (sel >= 700) DoCommand(static_cast<WORD>(sel));
+        return;
     }
     if (id >= 800 && id <= 817) {
         g.toolKind = kTools[id - 800];
@@ -842,6 +862,13 @@ void DoCommand(WORD id) {
                 WholeImageOperation(OperationKind::Resize, [&](Image& image) {
                     image.Resize(Size{width, height}, ResizeMode::Nearest, ResizeDirection::Both);
                 });
+            }
+            break;
+        }
+        case 407: {
+            Rect r = g.tool ? g.tool->SelectionRect() : Rect{};
+            if (r.w > 0 && r.h > 0) {
+                WholeImageOperation(OperationKind::Crop, [&](Image& image) { image.Crop(r); });
             }
             break;
         }
