@@ -301,17 +301,14 @@ static void DrawVSeparator(HDC hdc, int x, int top, int bottom) {
 
 static void DrawCmdBtn(HDC hdc, const RECT& r, const char* icon, const wchar_t* label,
                        bool selected, bool iconOnly) {
-    COLORREF bg = selected ? RGB(196, 220, 246) : RGB(250, 250, 250);
+    COLORREF bg = selected ? RGB(204, 228, 247) : RGB(243, 243, 243);
     HBRUSH br = CreateSolidBrush(bg);
-    FillRectValue(hdc, r, br);
-    DeleteObject(br);
-    HPEN pen = CreatePen(PS_SOLID, 1, selected ? RGB(100, 150, 220) : RGB(200, 200, 200));
+    HPEN pen = CreatePen(PS_SOLID, 1, selected ? RGB(153, 209, 255) : RGB(243, 243, 243));
     HGDIOBJ oldPen = SelectObject(hdc, pen);
-    HGDIOBJ oldBr = SelectObject(hdc, GetStockObject(NULL_BRUSH));
-    Rectangle(hdc, r.left, r.top, r.right, r.bottom);
-    SelectObject(hdc, oldBr);
-    SelectObject(hdc, oldPen);
-    DeleteObject(pen);
+    HGDIOBJ oldBr = SelectObject(hdc, br);
+    RoundRect(hdc, r.left, r.top, r.right, r.bottom, 6, 6);
+    SelectObject(hdc, oldBr); SelectObject(hdc, oldPen);
+    DeleteObject(br); DeleteObject(pen);
     if (icon) {
         if (Image* img = GetIcon(icon)) {
             const int isz = iconOnly ? 24 : 20;
@@ -322,6 +319,7 @@ static void DrawCmdBtn(HDC hdc, const RECT& r, const char* icon, const wchar_t* 
     }
     if (label && !iconOnly) {
         SetBkMode(hdc, TRANSPARENT);
+        SetTextColor(hdc, RGB(32,32,32));
         RECT tr{r.left, r.top + 24, r.right, r.bottom - 1};
         DrawTextW(hdc, label, -1, &tr, DT_CENTER | DT_SINGLELINE | DT_VCENTER);
     }
@@ -445,6 +443,8 @@ void DrawCommandBar(HDC hdc) {
     RECT client; GetClientRect(g.hwnd, &client);
     const int top = CommandBarTop();
     const int h = kCommandBarHeight;
+    static HFONT font = CreateFontW(-12, 0,0,0, FW_NORMAL, 0,0,0, DEFAULT_CHARSET, 0,0, CLEARTYPE_QUALITY, 0, L"Segoe UI");
+    HGDIOBJ oldFont = SelectObject(hdc, font);
     HBRUSH bg = CreateSolidBrush(RGB(243, 243, 243));
     FillRectValue(hdc, RECT{0, top, client.right, top + h}, bg);
     DeleteObject(bg);
@@ -520,6 +520,7 @@ void DrawCommandBar(HDC hdc) {
         DeleteObject(pen); DeleteObject(cb);
     }
     DrawCmdBtn(hdc, L.editColors, "colors.png", L"Edit", false, false);
+    SelectObject(hdc, oldFont);
 }
 
 void DrawLeftPanel(HDC hdc) {

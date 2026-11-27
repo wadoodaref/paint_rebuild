@@ -522,3 +522,15 @@ as overlapping swatches.
 
 **Commit:** 7cacf0f35e4b4380d0d50b53bc28170ab2bc3e7d
 
+
+
+## 2026-11-27 ? Session 28 ? Rounded command bar and Segoe UI
+
+**Change:** command bar buttons now use rounded rectangles and Paint 11-like
+selected/neutral colors; command bar draws with Segoe UI/ClearType font for
+closer visual fidelity.
+
+**Verification:** MSVC build 0 warnings/0 errors; selftest 103 checks, 0 FAIL.
+
+**Commit:** c33e467b18244f2cb1798da205b44281420746dd
+
