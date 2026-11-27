@@ -167,7 +167,8 @@ Start Menu / Quick Launch, and a depth-7 all-drive `mspaint.exe` scan.
 `docs/evidence/REA_SOURCES.md` and taught `tools/rea/locate_paint.ps1` to report
 the alias as `analyzable=false` (script re-run and verified).
 
-**Commit:** fa6003ca29ad8f76d6911976f23ee38e9039f2b9
+**Commit:** 51fee5b
+
 
 
 
