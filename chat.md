@@ -167,7 +167,33 @@ Start Menu / Quick Launch, and a depth-7 all-drive `mspaint.exe` scan.
 `docs/evidence/REA_SOURCES.md` and taught `tools/rea/locate_paint.ps1` to report
 the alias as `analyzable=false` (script re-run and verified).
 
-**Commit:** 51fee5b
+**Commit:** 51fee5b (a follow-up hash-correction commit `578e2b7` was pushed
+after rebasing onto a concurrent remote README change).
+
+## 2026-11-27 — Session 8 — Vendor the REA reference bundle (no more searching)
+
+**Request:** "take from it all needed files, dll or module so u wonot search
+again in other pc, add to project folder and commit."
+
+**Change:** created `reference/paint-11.2609.441.0/` with 11 verified artifacts
+copied from the installed AppX `PaintApp` directory: `mspaint.exe`,
+`BasePaint.dll`, `PaintTools.dll`, `ImageProcessing.dll`, `ProjectFile.dll`,
+`RestartRecovery.dll`, `PaintUI.dll`, `PaintUI.winmd`, `EnumHelper.dll`,
+`PlatformHelpers.dll`, `PGS.dll` (16,837,120 bytes total). Added `manifest.json`
+with per-file SHA-256 and `README.md` with the REA use of each file. Added
+`tools/rea/verify_reference.ps1` and `tools/rea/inspect_local_reference.ps1`
+so another PC can verify and inspect offline with no machine-dependent search.
+Per the earlier instruction, **no cloud/AI/provenance modules, no licence or
+NOTICE files, and no assets/shaders/resources.pri** were copied; the bundle is
+read-only evidence, never linked, loaded or shipped by the app. Docs/handoff
+updated accordingly.
+
+**Verification:** `verify_reference.ps1` — 11 files, 0 FAIL; `locate_paint.ps1`
+and `inspect_local_reference.ps1` both run successfully. No source or build
+output changed; the selftest/app results from Session 6 still stand.
+
+**Commit:** 7a5b36cf7972c5f695bb917cb91bd83bbab6817d
+
 
 
 

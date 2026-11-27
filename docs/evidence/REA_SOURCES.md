@@ -14,6 +14,15 @@ Both were confirmed via `Get-AppxPackage` and a direct directory listing.
 No `mspaint.exe` exists in `C:\Windows\System32` on this machine — do not use
 the traditional path here.
 
+### Offline bundle (added 2026-11-27)
+The 11 analyzable core artifacts listed above are now vendored in
+`reference/paint-11.2609.441.0/` with `manifest.json` (SHA-256 for every file),
+`README.md`, and the offline helpers `tools/rea/verify_reference.ps1` and
+`tools/rea/inspect_local_reference.ps1`. A future session on another PC should
+use that bundle first and **does not need to search for the installed app**.
+Cloud/AI modules, licence/NOTICE files, assets and shaders are deliberately
+excluded. These files are read-only evidence, never loaded by our app.
+
 ### Resolved candidate search (2026-11-27, this machine)
 A deeper all-drive scan and registry check settled where Paint actually lives:
 - `HKCU\Software\Microsoft\Windows\CurrentVersion\App Paths\mspaint.exe`

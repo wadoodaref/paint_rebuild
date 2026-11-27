@@ -1,0 +1,70 @@
+﻿{
+    "artifact":  "Microsoft.Paint",
+    "version":  "11.2609.441.0",
+    "verified_on":  "2026-11-27",
+    "source_machine":  "DR-WADOOD-HP15",
+    "source_path":  "C:\\Program Files\\WindowsApps\\Microsoft.Paint_11.2609.441.0_x64__8wekyb3d8bbwe\\PaintApp",
+    "read_only_evidence":  true,
+    "excluded":  [
+                     "cloud/AI modules",
+                     "licence/NOTICE files",
+                     "assets/shaders/resources.pri"
+                 ],
+    "files":  [
+                  {
+                      "file":  "BasePaint.dll",
+                      "bytes":  355328,
+                      "sha256":  "1779dd5cbfa3fdf4bde64b92ce102ecfa0872c683d5b75532ed4a365abf59cf5"
+                  },
+                  {
+                      "file":  "EnumHelper.dll",
+                      "bytes":  62464,
+                      "sha256":  "b1b0a7ef0234f6ea60e2d7bafb41b93c05dc7b6643e34e20139f575fa6ec36d3"
+                  },
+                  {
+                      "file":  "ImageProcessing.dll",
+                      "bytes":  29696,
+                      "sha256":  "142f6681ce6a90f607b6ff54d0dafaaf08d627a4f11c0a3d274591cb1e039400"
+                  },
+                  {
+                      "file":  "mspaint.exe",
+                      "bytes":  4303360,
+                      "sha256":  "4428e7cd7a4486c41ff8e9a497def906b9e2630ef9603f4018416beacd813db7"
+                  },
+                  {
+                      "file":  "PaintTools.dll",
+                      "bytes":  310784,
+                      "sha256":  "98044c3e48b05a5efa70376a4d6cb84ee3e4a825e28d8662c6f7d1304abbd81e"
+                  },
+                  {
+                      "file":  "PaintUI.dll",
+                      "bytes":  10632192,
+                      "sha256":  "66b18e89c9a2d573872d0a6abf6aa169a2dd285818806e24b6fa102c95370b12"
+                  },
+                  {
+                      "file":  "PaintUI.winmd",
+                      "bytes":  302080,
+                      "sha256":  "07a3b1340bc0e04d0be68aab146eedd1eaaec5ea85eee3660148ef195418376c"
+                  },
+                  {
+                      "file":  "PGS.dll",
+                      "bytes":  86528,
+                      "sha256":  "2635ff56137ab5fd4707453718831a1cabc3acc21db9931fd18fbc678aba4f60"
+                  },
+                  {
+                      "file":  "PlatformHelpers.dll",
+                      "bytes":  428032,
+                      "sha256":  "6aced20d67d8019176248b0f52dd48e54d3e87d3a22ad4012337c97abebbcd14"
+                  },
+                  {
+                      "file":  "ProjectFile.dll",
+                      "bytes":  268800,
+                      "sha256":  "68ebd66bf891ef757d180bc8fbdd50c76beb8bfa5a110f065ad697095ab96f8b"
+                  },
+                  {
+                      "file":  "RestartRecovery.dll",
+                      "bytes":  57856,
+                      "sha256":  "3ac939c01682bf54647209621a977276822e0bef04c54283b3b91a2a81c607c8"
+                  }
+              ]
+}

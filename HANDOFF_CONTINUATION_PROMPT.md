@@ -45,4 +45,9 @@ powershell -ExecutionPolicy Bypass -File run.ps1
   real Edit Colors / Stretch-Skew / Flip-Rotate dialogs, DirectWrite text
   rendering, system clipboard `CF_DIB` bridge, autorecovery UI, and paging the
   `PaintUI.winmd` type list through the REA CLI (MCP response budget blocked it).
-- REA locator: `powershell -ExecutionPolicy Bypass -File tools\rea\locate_paint.ps1 -Json`.
+- **Offline reference bundle** (no search needed on another PC):
+  `reference/paint-11.2609.441.0/` — 11 verified core artifacts + `manifest.json`.
+  Verify with `tools\rea\verify_reference.ps1`, list REA calls with
+  `tools\rea\inspect_local_reference.ps1`. Cloud/AI modules, licence files and
+  assets are deliberately excluded; these files are read-only evidence only.
+- REA locator for this machine: `tools\rea\locate_paint.ps1 -Json`.

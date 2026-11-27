@@ -28,7 +28,11 @@ autorecovery. We reimplement these boundaries in fresh C++, not copy them.
 | 8 | Final verification: full selftest + smoke script + handoff | zero warnings/errors, all stages pushed | TODO |
 
 ## Non-goals (deliberate, user 2026-11-27)
-- No copying of Microsoft binaries, icons, strings or source.
+- No copying of Microsoft binaries, icons, strings or source **into the
+  application or its build**. The separate `reference/paint-11.2609.441.0/`
+  folder holds read-only REA evidence copies (no cloud/AI modules, no licence
+  files, no assets) so other PCs need not search; those files are never linked,
+  loaded or shipped by `paintrebuild.exe`.
 - **No copied license/NOTICE files from sibling projects.** The shared rules v7
   file is carried deliberately; nothing else is copied from another repo.
 - **No cloud / AI / provenance / telemetry modules.** REA observed
