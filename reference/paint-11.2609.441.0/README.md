@@ -27,6 +27,16 @@ The executable was also confirmed via
 A machine-readable copy is `manifest.json`. Verify integrity with
 `powershell -ExecutionPolicy Bypass -File tools\rea\verify_reference.ps1`.
 
+## UI assets (added 2026-11-27, user request: exact UI)
+- `ui-assets/` — 18 light-theme tool SVG references copied from the installed
+  package `Assets\theme-light\` (selection, free-form, eraser, fill, picker,
+  zoom, pencil, brush, airbrush, calligraphy, text, line, curve, polygon,
+  rectangle, oval, rounded rectangle, tools).
+- `assets/icons/` at the repo root — matching 24×24 transparent PNGs rendered
+  from those SVGs by `tools\rea\make_icons.py` (resvg-py). The Win32 tool box
+  and ribbon draw these icons instead of letter placeholders.
+Only these tool glyphs were copied; no cloud/AI artwork, licence or NOTICE text.
+
 ## Deliberately NOT vendored (user instruction, 2026-11-27)
 - **Cloud / AI / provenance modules:** `AIServices.dll`, `AIServicesCS.dll`,
   `AIStore.dll`, `PaintAIManager.dll`, `PaintProvenanceNet.dll`, `c2pa_c.dll`,

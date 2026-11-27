@@ -20,6 +20,7 @@
 #include "clipboard_win.h"
 #include "dialogs_win.h"
 #include "extra_ui.h"
+#include "icons.h"
 #include "print_win.h"
 #include "recovery.h"
 #include "text_render.h"
@@ -273,10 +274,15 @@ void DrawToolBox(HDC hdc) {
         FillRectValue(hdc, RECT{x, y, x + 26, y + 26}, brush);
         DeleteObject(brush);
         Rectangle(hdc, x, y, x + 26, y + 26);
-        SetBkMode(hdc, TRANSPARENT);
-        const char* name = ToolName(kTools[i]);
-        const char initial = name[0];
-        TextOutA(hdc, x + 9, y + 6, &initial, 1);
+        Image* icon = GetToolIcon(static_cast<int>(i));
+        if (icon) {
+            DrawToolIcon(hdc, *icon, x + 2, y + 2, 22);
+        } else {
+            SetBkMode(hdc, TRANSPARENT);
+            const char* name = ToolName(kTools[i]);
+            const char initial = name[0];
+            TextOutA(hdc, x + 9, y + 6, &initial, 1);
+        }
     }
 }
 
@@ -385,6 +391,10 @@ void DrawRibbon(HDC hdc) {
     for (const auto& button : RibbonButtons()) {
         FillRectValue(hdc, button.rect, static_cast<HBRUSH>(GetStockObject(WHITE_BRUSH)));
         Rectangle(hdc, button.rect.left, button.rect.top, button.rect.right, button.rect.bottom);
+        if (button.command >= 800 && button.command <= 817) {
+            if (Image* icon = GetToolIcon(button.command - 800))
+                DrawToolIcon(hdc, *icon, button.rect.left + 2, button.rect.top + 3, 18);
+        }
         RECT text = button.rect;
         DrawTextW(hdc, button.label, static_cast<int>(wcslen(button.label)), &text,
                   DT_CENTER | DT_VCENTER | DT_SINGLELINE);

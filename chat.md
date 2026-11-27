@@ -405,7 +405,27 @@ artifacts — documented inference — and numeric command IDs/CIL behaviour).
 **Verification:** MSVC build 0 warnings/0 errors (both targets); selftest 103
 checks, 0 FAIL; GUI smoke launched with title `PaintRebuild - Untitled`.
 
-**Commit:** d0b2b33a9aee0302c6add94a2cf84951480238b6
+**Commit:** d0b2b33a9aee0302c6add94a2cf84951480238b6 (`0fd3655`)
+
+## 2026-11-27 — Session 22 — Exact UI icons from the source theme
+
+**Request:** "faithful to source workflow, copy/recreate exact ui" — this stage
+copies the actual tool glyphs.
+
+**Change:** vendored 18 light-theme tool SVGs from the installed Paint package
+into `reference/paint-11.2609.441.0/ui-assets/`, added
+`tools/rea/make_icons.py` (resvg-py, parameterized `--source` / `PAINT_ASSETS`)
+to render them into `assets/icons/*.png` (24×24 transparent). Added
+`src/app/icons.cpp/.h` to lazily load those PNGs through WIC and draw them in
+the tool box and ribbon buttons instead of letter placeholders. No cloud/AI
+artwork, licence or NOTICE text was copied.
+
+**Verification:** 18/18 icons rendered; MSVC build 0 warnings/0 errors (both
+targets); selftest 103 checks, 0 FAIL; GUI smoke launched with title
+`PaintRebuild - Untitled`.
+
+**Commit:** 3f4a810d43802c3858877e7057d10e6a0ebfd8a3
+
 
 
 

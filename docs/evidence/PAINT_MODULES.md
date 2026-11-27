@@ -123,8 +123,11 @@ excluded from our implementation.
   `LightningTool`, four arrow tools, three callout tools).
 **Inference:** our tool labels were aligned to those names (`Oval`,
 `Calligraphy pen`, `Color picker`, etc.) and the 19 auto-shapes were added as a
-`Shapes` menu. **No SVG/PNG assets, icons or licence text from the package were
-copied** — only human-readable names were used as evidence.
+`Shapes` menu. Per the later user request for an exact UI copy, 18 light-theme
+tool SVGs from `Assets\theme-light\` are now vendored in
+`reference\paint-11.2609.441.0\ui-assets\`, and `tools\rea\make_icons.py`
+renders them to `assets\icons\*.png` (24×24, transparent) used by the Win32
+tool box and ribbon. No cloud/AI artwork, licence or NOTICE text was copied.
 
 ## Explicitly excluded by user instruction (2026-11-27)
 No licence or cloud modules are copied or reimplemented. The installed app also
