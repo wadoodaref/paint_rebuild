@@ -686,8 +686,11 @@ bool HandleCommandBarClick(int x, int y, bool rightButton) {
     for (auto& sb : L.shapeButtons) {
         if (HitRect(sb.rect, x, y)) { DoCommand(static_cast<WORD>(sb.command)); return true; }
     }
-    if (HitRect(L.color1, x, y) || HitRect(L.color2, x, y)) {
-        std::swap(g.foreground, g.background); RebuildTool(); InvalidateRect(g.hwnd, nullptr, TRUE); return true;
+    {
+        RECT c2 = L.color2; OffsetRect(&c2, 8, -6);
+        if (HitRect(L.color1, x, y) || HitRect(c2, x, y)) {
+            std::swap(g.foreground, g.background); RebuildTool(); InvalidateRect(g.hwnd, nullptr, TRUE); return true;
+        }
     }
     for (int i = 0; i < static_cast<int>(L.palette.size()) && i < 20; ++i) {
         if (HitRect(L.palette[i], x, y)) {

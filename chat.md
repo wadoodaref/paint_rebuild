@@ -545,3 +545,13 @@ and Fill command-bar buttons for closer Paint 11 fidelity.
 
 **Commit:** d37c33950d1bce90b632189f3001ba45640ea69e
 
+
+
+## 2026-11-27 ? Session 30 ? Color swatch hit-test fix
+
+**Change:** color 1/2 hit testing now matches the overlapping visual layout.
+
+**Verification:** MSVC build 0 warnings/0 errors; selftest 103 checks, 0 FAIL.
+
+**Commit:** ec69c53e0ffd8d08eb7cfd079ed2d2c3bcde69cb
+
