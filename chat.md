@@ -87,5 +87,20 @@ Added round-trip selftests (pixel-exact save â†’ load â†’ compare).
 **Verification:** MSVC build 0 warnings/0 errors; `pr_selftest.exe` â€” **79
 checks, 0 FAIL** (72 foundation + 7 codec checks).
 
-**Commit:** 82f28177788a42aded1311dd54989d454e7b811b
+**Commit:** 82f28177788a42aded1311dd54989d454e7b811b (`0420cfc`)
+
+## 2026-11-27 — Session 4 — Stage 5: layered project + clipboard
+
+**Change:** `src/core/project.h/.cpp` implements the `ProjectFile.dll` analog —
+`LayerStack`, `ImageLayer`, `LayerMetadata`, `Background`, DPI, `Flatten()` and
+our own binary `SaveProject`/`LoadProject` format (no Microsoft project format
+or asset copied). `src/core/clipboard.h` adds copy/cut/paste on an `Image`
+selection; the Win32 stage will map it to `CF_DIB`.
+
+**Verification:** MSVC build 0 warnings/0 errors; `pr_selftest.exe` — **93
+checks, 0 FAIL** (14 new project/clipboard checks, including save → load →
+flatten pixel comparison and cut/paste).
+
+**Commit:** bb180bf3d4bda12de71d954b488564a4c9e24978
+
 

@@ -7,6 +7,8 @@
 
 #include "../core/attributes.h"
 #include "../core/codec.h"
+#include "../core/clipboard.h"
+#include "../core/project.h"
 #include "../core/color.h"
 #include "../core/event.h"
 #include "../core/geometry.h"
@@ -234,6 +236,47 @@ static void TestCodec() {
     std::filesystem::remove(path, ec);
 }
 
+static void TestProjectAndClipboard() {
+    LayerStack stack(Size{4, 4});
+    stack.GetBackground().color = palette::Red();
+    auto base = Image::Create(Size{4, 4}, palette::Blue());
+    stack.InsertLayer(std::move(base), "Layer 1");
+    auto detail = Image::Create(Size{4, 4}, Color{0});
+    detail->SetPixel(Point{2, 2}, palette::Green());
+    stack.InsertLayer(std::move(detail), "Layer 2");
+    stack.SetDpi(120.0, 96.0);
+
+    auto flat = stack.Flatten();
+    CHECK(flat->GetPixel(Point{0, 0}).argb == palette::Blue().argb);
+    CHECK(flat->GetPixel(Point{2, 2}).argb == palette::Green().argb);
+    CHECK(stack.Layers().size() == 2);
+
+    const std::string path = (std::filesystem::temp_directory_path() / "pr_selftest.prproj").string();
+    CHECK(SaveProject(stack, path));
+    auto loaded = LoadProject(path);
+    CHECK(loaded != nullptr);
+    if (loaded) {
+        CHECK(loaded->Layers().size() == 2);
+        CHECK(loaded->Layers()[0].Metadata().name == "Layer 1");
+        CHECK(loaded->DpiX() == 120.0);
+        auto second = loaded->Flatten();
+        CHECK(second->GetPixel(Point{2, 2}).argb == palette::Green().argb);
+    }
+    std::error_code ec;
+    std::filesystem::remove(path, ec);
+
+    auto canvas = Image::Create(Size{5, 5});
+    canvas->FillRect(Rect{1, 1, 2, 2}, palette::Red());
+    SelectionClipboard clipboard;
+    clipboard.Copy(*canvas, Rect{1, 1, 2, 2});
+    CHECK(clipboard.HasContent());
+    CHECK(clipboard.Content().width() == 2 && clipboard.Content().height() == 2);
+    clipboard.Cut(*canvas, Rect{1, 1, 2, 2}, palette::White());
+    CHECK(canvas->GetPixel(Point{1, 1}).argb == palette::White().argb);
+    CHECK(clipboard.Paste(*canvas, Point{3, 3}));
+    CHECK(canvas->GetPixel(Point{3, 3}).argb == palette::Red().argb);
+}
+
 int main() {
     CHECK(sizeof(std::uint32_t) == 4);  // Stage 0 harness check
     TestGeometry();
@@ -243,6 +286,7 @@ int main() {
     TestOperations();
     TestTools();
     TestCodec();
+    TestProjectAndClipboard();
 
     std::printf("pr_selftest: %d checks, %d FAIL\n", g_checks, g_fails);
     return g_fails == 0 ? 0 : 1;
