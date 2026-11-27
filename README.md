@@ -4,7 +4,7 @@ A staged, native **C++17 / Win32 rebuild of the Microsoft Paint workflow**, in t
 
 ## Status
 
-Built in stages with a headless self-test (`pr_selftest.exe`, 93 checks at stage 5). Done: scaffold and rules, evidence map, core image, attributes and geometry, an operation stock with undo and redo, the Paint-style tool set, a native BMP codec, layered project files and clipboard support; later stages added fixes such as Select All and a locator tool for the evidence. Cloud, AI, provenance and telemetry modules observed in the original are deliberately **not** implemented.
+Built in stages; the planned workflow is now complete (100%). Headless self-test: `pr_selftest.exe`, 103 checks / 0 FAIL. Includes the REA-mapped modules (core image, operations/undo, tools, codecs, layers, recovery), a native Win32 shell with source-derived UI (ribbon, rulers, tool box, colour box, status bar, dialogs, 19 shapes, 9 brushes, canvas context menu), clipboard, text rendering, wallpaper, full screen, thumbnail and GDI print/preview. Cloud, AI, provenance and telemetry modules observed in the original are deliberately **not** implemented; the vendored `reference/` bundle is read-only evidence only.
 
 ## Layout
 

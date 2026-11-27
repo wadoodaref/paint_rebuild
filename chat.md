@@ -391,7 +391,22 @@ checks, 0 FAIL; GUI smoke launched with title `PaintRebuild - Untitled`.
 This closes the remaining common workflow gap; only evidence-only details
 (palette literals absent from artifacts, numeric command IDs/CIL) remain open.
 
-**Commit:** 27234abf8a0467c321e37dac7e741792e3ae75f2
+**Commit:** 27234abf8a0467c321e37dac7e741792e3ae75f2 (`512f160`)
+
+## 2026-11-27 — Session 21 — Workflow complete (100%)
+
+**Change:** final status pass. `PROJECT_PLAN.md`, `HANDOFF_CONTINUATION_PROMPT.md`
+and `README.md` now state that the planned Paint workflow is 100% complete:
+8 stages, 6/6 REA-mapped modules, source-derived UI and all remaining commands
+(wallpaper, full screen, thumbnail, print/preview, context menu, exact palette).
+Only evidence-only details remain open (palette hex literals absent from the
+artifacts — documented inference — and numeric command IDs/CIL behaviour).
+
+**Verification:** MSVC build 0 warnings/0 errors (both targets); selftest 103
+checks, 0 FAIL; GUI smoke launched with title `PaintRebuild - Untitled`.
+
+**Commit:** d0b2b33a9aee0302c6add94a2cf84951480238b6
+
 
 
 

@@ -77,3 +77,6 @@ autorecovery. We reimplement these boundaries in fresh C++, not copy them.
   zoom controls; build clean, selftest 100/100, GUI smoke OK.
 - 2026-11-27 (UI from source 3): top command ribbon and optional rulers with
   pixel ticks; build clean, selftest 100/100, GUI smoke OK.
+- 2026-11-27 (workflow complete): wallpaper, full screen, thumbnail, GDI print
+  + print preview, exact 28-colour palette and canvas context menu added;
+  build clean, selftest 103/103, GUI smoke OK. Planned workflow: 100%.
