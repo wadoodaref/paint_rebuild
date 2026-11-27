@@ -569,6 +569,8 @@ void DrawLeftPanel(HDC hdc) {
     RECT client; GetClientRect(g.hwnd, &client);
     const int top = CommandBarHeight();
     const int bottom = client.bottom - kStatusHeight;
+    static HFONT font = CreateFontW(-12, 0,0,0, FW_NORMAL, 0,0,0, DEFAULT_CHARSET, 0,0, CLEARTYPE_QUALITY, 0, L"Segoe UI");
+    HGDIOBJ oldFont = SelectObject(hdc, font);
     HBRUSH bg = CreateSolidBrush(RGB(243, 243, 243));
     FillRectValue(hdc, RECT{0, top, kLeftPanelWidth, bottom}, bg);
     DeleteObject(bg);
@@ -598,11 +600,14 @@ void DrawLeftPanel(HDC hdc) {
     FillRectValue(hdc, RECT{sx, oy1, sx + 4, oy2}, track2); DeleteObject(track2);
     HBRUSH thumb2 = CreateSolidBrush(RGB(0,120,215));
     FillRectValue(hdc, RECT{sx - 6, oy2 - 10, sx + 10, oy2}, thumb2); DeleteObject(thumb2);
+    SelectObject(hdc, oldFont);
 }
 
 void DrawStatus(HDC hdc) {
     RECT client; GetClientRect(g.hwnd, &client);
     const int top = client.bottom - kStatusHeight;
+    static HFONT font = CreateFontW(-12, 0,0,0, FW_NORMAL, 0,0,0, DEFAULT_CHARSET, 0,0, CLEARTYPE_QUALITY, 0, L"Segoe UI");
+    HGDIOBJ oldFont = SelectObject(hdc, font);
     HBRUSH bg = CreateSolidBrush(RGB(243, 243, 243));
     FillRectValue(hdc, RECT{0, top, client.right, client.bottom}, bg);
     DeleteObject(bg);
@@ -642,6 +647,7 @@ void DrawStatus(HDC hdc) {
     HBRUSH th = CreateSolidBrush(RGB(0,120,215));
     FillRectValue(hdc, RECT{zx-4, top+9, zx+4, top+23}, th); DeleteObject(th);
     btn(client.right - 64, L"+");
+    SelectObject(hdc, oldFont);
 }
 
 void DrawRuler(HDC hdc, const RECT& canvas) {

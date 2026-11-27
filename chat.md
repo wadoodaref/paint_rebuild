@@ -566,3 +566,14 @@ BGRA image so transparent pixels show correctly (Paint fidelity).
 
 **Commit:** 3ebf2de2077e2a72998b185f30adf20e851d27f8
 
+
+
+## 2026-11-27 ? Session 32 ? Segoe UI font consistency
+
+**Change:** applied Segoe UI/ClearType font to left panel and status bar for
+consistent Paint 11-like typography.
+
+**Verification:** MSVC build 0 warnings/0 errors; selftest 103 checks, 0 FAIL.
+
+**Commit:** c91fb53840e51575e3fa852c775ed611eebb85ae
+
