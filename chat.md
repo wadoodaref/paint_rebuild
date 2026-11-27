@@ -141,7 +141,34 @@ found. Verified output matches the earlier REA evidence
 `PaintRebuild - Untitled`. No licence file, no cloud/AI/provenance module and
 no Microsoft binary is shipped or loaded by the project.
 
-**Commit:** 052365dbbb0efa18417e640ee372861fb086b006
+**Commit:** 052365dbbb0efa18417e640ee372861fb086b006 (`b88f019`)
+
+## 2026-11-27 — Session 7 — Resolve the user's "Paint is on this PC" pointer
+
+**Request:** user pointed at
+`C:\Users\lojain\AppData\Local\Microsoft\WindowsApps\mspaint.exe` and later at
+the AppX `...\PaintApp\mspaint.exe`. Searched registry App Paths, uninstall keys,
+Start Menu / Quick Launch, and a depth-7 all-drive `mspaint.exe` scan.
+
+**Findings (all verified on this machine):**
+- The `AppData\Local\Microsoft\WindowsApps\mspaint.exe` path is a **0-byte
+  App Execution Alias** (`Archive, ReparsePoint`), unreadable and unhashable —
+  not an analyzable artifact.
+- Four `mspaint.exe` files in the WU download cache are 365 B – 10 KB update
+  payloads without version info — patch stubs, excluded per rules v7 §8.
+- `HKCU\...\App Paths\mspaint.exe` resolves to
+  `C:\Program Files\WindowsApps\Microsoft.Paint_11.2609.441.0_x64__8wekyb3d8bbwe\PaintApp\mspaint.exe`,
+  verified: 4,303,360 bytes, file version **11.2609.441.0**, SHA-256
+  `4428e7cd7a4486c41ff8e9a497def906b9e2630ef9603f4018416beacd813db7` — the
+  exact artifact already inspected with REA/MCP. No other analyzable Paint
+  binary exists here, so the module/tool/workflow evidence is unchanged.
+
+**Change:** recorded these resolved candidates in
+`docs/evidence/REA_SOURCES.md` and taught `tools/rea/locate_paint.ps1` to report
+the alias as `analyzable=false` (script re-run and verified).
+
+**Commit:** fa6003ca29ad8f76d6911976f23ee38e9039f2b9
+
 
 
 

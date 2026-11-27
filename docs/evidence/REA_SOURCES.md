@@ -14,6 +14,21 @@ Both were confirmed via `Get-AppxPackage` and a direct directory listing.
 No `mspaint.exe` exists in `C:\Windows\System32` on this machine — do not use
 the traditional path here.
 
+### Resolved candidate search (2026-11-27, this machine)
+A deeper all-drive scan and registry check settled where Paint actually lives:
+- `HKCU\Software\Microsoft\Windows\CurrentVersion\App Paths\mspaint.exe`
+  resolves to the AppX `PaintApp\mspaint.exe` above — this is the installed,
+  analyzable reference (SHA-256 `4428e7cd7a4486c4…`).
+- `C:\Users\lojain\AppData\Local\Microsoft\WindowsApps\mspaint.exe` exists but
+  is a **0-byte reparse point / App Execution Alias** (`Archive, ReparsePoint`);
+  it cannot be read or hashed and is not an analyzable artifact.
+- Four `mspaint.exe` files in
+  `D:\WUDownloadCache\59b763ec8e7291a1\Package_for_RollupFix…\…mspaint_10.0.26100.*\f\`
+  are 365 B – 10,249 B update payloads with no version info — patch stubs, not
+  full binaries. Per rules v7 §8 these cache/partial copies are excluded as
+  reference material; do not substitute them for the installed app.
+No Start Menu or Quick Launch Paint shortcut exists here (Store app).
+
 ## Planned REA reads (map → model → implement → verify)
 1. `inspect_pe_imports` on the main Paint executable(s) — which OS imaging and
    UI APIs the reference uses (WIC, GDI+, Direct2D, RichEdit, clipboard).

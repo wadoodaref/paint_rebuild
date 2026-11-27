@@ -16,8 +16,21 @@ foreach ($package in $packages) {
                 exe     = $exe
                 sha256  = (Get-FileHash -Path $exe -Algorithm SHA256).Hash.ToLowerInvariant()
                 source  = 'AppxPackage'
+                analyzable = $true
             }
         }
+    }
+}
+
+# App Execution Alias: exists but is a 0-byte reparse point, never a PE to analyze.
+$alias = Join-Path $env:LOCALAPPDATA 'Microsoft\WindowsApps\mspaint.exe'
+if (Test-Path -LiteralPath $alias) {
+    $results += [pscustomobject]@{
+        package    = '(App Execution Alias)'
+        exe        = $alias
+        sha256     = $null
+        source     = 'ReparsePoint'
+        analyzable = $false
     }
 }
 
@@ -29,6 +42,7 @@ foreach ($hint in @("$env:WINDIR\System32\mspaint.exe", "$env:WINDIR\SysWOW64\ms
             exe     = $hint
             sha256  = (Get-FileHash -Path $hint -Algorithm SHA256).Hash.ToLowerInvariant()
             source  = 'LegacyHint'
+            analyzable = $true
         }
     }
 }
