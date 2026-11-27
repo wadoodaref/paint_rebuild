@@ -16,7 +16,7 @@ recorded in `docs/evidence/` and used as evidence, never as copied code.
 | 4 | Codecs (`ImageProcessing` analog): native BMP, WIC/GDI+ PNG/JPEG | round-trip selftest (write → read → identical pixels) | BMP DONE; WIC TODO |
 | 5 | `ProjectFile` analog: layers + document persistence, selection/clipboard | selftest covers layers, selection and transforms | DONE |
 | 6 | Win32 shell (`PaintUI` analog): window, tool box, color box, canvas, status bar, menus | app builds and launches; tools respond to mouse | DONE |
-| 7 | Paint dialogs + fidelity pass from REA evidence | Attributes, Edit Colors, Stretch/Skew, Flip/Rotate, Text, Zoom, recovery | PARTIAL — Attributes/Edit Colors/Stretch-Skew/Flip-Rotate, system clipboard and REA locator done; DirectWrite text + recovery UI remain backlog |
+| 7 | Paint dialogs + fidelity pass from REA evidence | Attributes, Edit Colors, Stretch/Skew, Flip/Rotate, Text, Zoom, recovery | PARTIAL — dialogs, system clipboard, REA locator and autorecovery done; DirectWrite text rendering remains backlog |
 | 8 | Final verification + handoff | zero warnings/errors, full selftest, GUI smoke, all stages pushed | DONE |
 
 Stage/module names follow the **observed** shipped module map in
@@ -68,3 +68,5 @@ autorecovery. We reimplement these boundaries in fresh C++, not copy them.
 - 2026-11-27 (fidelity): system CF_DIB clipboard bridge and modal
   Stretch/Skew, Flip/Rotate, Attributes and Edit Colors dialogs added; both
   targets still build with 0 warnings/0 errors, 93/93 checks, GUI smoke OK.
+- 2026-11-27 (autorecovery): 60s dirty-image BMP snapshot + `.info`, startup
+  recovery prompt, cleanup on save/close; build clean, 93/93, GUI smoke OK.

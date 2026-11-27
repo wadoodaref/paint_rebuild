@@ -209,7 +209,22 @@ clipboard. `build.ps1` picks up the new app sources automatically via its
 **Verification:** MSVC build 0 warnings/0 errors (both targets); selftest 93
 checks, 0 FAIL; GUI smoke launched with title `PaintRebuild - Untitled`.
 
-**Commit:** 7be460af43866b8163b43e639cf90b8b2486ffe8
+**Commit:** 7be460af43866b8163b43e639cf90b8b2486ffe8 (`eaf79d2`)
+
+## 2026-11-27 — Session 10 — Autorecovery (RestartRecovery.dll analog)
+
+**Change:** added `src/app/recovery.h/.cpp` — periodic BMP snapshot of a dirty
+image plus a `.info` sidecar under `%LOCALAPPDATA%\PaintRebuild\AutoRecover`,
+latest-snapshot discovery, load-on-startup recovery prompt, and cleanup after
+a normal save or clean close. Wired a 60-second `WM_TIMER` (id 7001) into the
+Win32 shell. This completes the last REA-mapped module in the backlog.
+
+**Verification:** MSVC build 0 warnings/0 errors (both targets); selftest 93
+checks, 0 FAIL; GUI smoke launched with title `PaintRebuild - Untitled`.
+Recovery directory starts empty as expected on a clean session.
+
+**Commit:** f4a7c1c5af9d0370b04f0c090b5a0828f8b78e72
+
 
 
 

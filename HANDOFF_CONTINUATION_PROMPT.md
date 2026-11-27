@@ -43,9 +43,11 @@ powershell -ExecutionPolicy Bypass -File run.ps1
   `chat.md`.
 - Done in the latest stage: system clipboard `CF_DIB` bridge and real modal
   Attributes / Stretch-Skew / Flip-Rotate / Edit Colors dialogs.
+- Autorecovery is now implemented (60s snapshot, startup recovery prompt,
+  cleanup on save/close) — the `RestartRecovery.dll` analog is complete.
 - Remaining fidelity work (stage 7 backlog, not required for the workflow):
-  DirectWrite text rendering, autorecovery UI, and paging the `PaintUI.winmd`
-  type list through the REA CLI (MCP response budget blocked it).
+  DirectWrite text rendering and paging the `PaintUI.winmd` type list through
+  the REA CLI (MCP response budget blocked it).
 - **Offline reference bundle** (no search needed on another PC):
   `reference/paint-11.2609.441.0/` — 11 verified core artifacts + `manifest.json`.
   Verify with `tools\rea\verify_reference.ps1`, list REA calls with

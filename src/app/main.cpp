@@ -19,6 +19,7 @@
 #include "../core/codec.h"
 #include "clipboard_win.h"
 #include "dialogs_win.h"
+#include "recovery.h"
 #include "../core/image.h"
 #include "../core/operation.h"
 #include "../tools/tool.h"
@@ -324,6 +325,7 @@ void SelectFile(bool save) {
         if (written) {
             g.filePath = p;
             g.stock.MarkSaved();
+            ClearRecovery(FindLatestRecovery());
             SetTitle();
         } else {
             MessageBoxW(g.hwnd, L"The image could not be saved.", L"PaintRebuild", MB_OK);
@@ -522,8 +524,29 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam) 
             SetMenu(hwnd, menu);
             NewDocument(800, 600);
             SetTitle();
+            const std::wstring recovery = FindLatestRecovery();
+            if (!recovery.empty()) {
+                const int answer = MessageBoxW(
+                    hwnd, L"An unsaved PaintRebuild image was recovered. Open it?",
+                    L"Document Recovery", MB_YESNO | MB_ICONQUESTION);
+                if (answer == IDYES) {
+                    auto restored = LoadRecovery(recovery);
+                    if (restored) {
+                        g.image = std::move(restored);
+                        g.stock.Clear();
+                        RebuildTool();
+                        InvalidateRect(hwnd, nullptr, TRUE);
+                    }
+                }
+                ClearRecovery(recovery);
+            }
+            SetTimer(hwnd, 7001, 60000, nullptr);  // autorecovery heartbeat
             return 0;
         }
+        case WM_TIMER:
+            if (wParam == 7001 && g.stock.IsDirty())
+                SaveRecoverySnapshot(*g.image, g.filePath);
+            return 0;
         case WM_PAINT:
             Paint(hwnd);
             return 0;
@@ -605,6 +628,8 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam) 
             InvalidateRect(hwnd, nullptr, TRUE);
             return 0;
         case WM_CLOSE:
+            if (!g.stock.IsDirty()) ClearRecovery(FindLatestRecovery());
+            KillTimer(hwnd, 7001);
             DestroyWindow(hwnd);
             return 0;
         case WM_DESTROY:
