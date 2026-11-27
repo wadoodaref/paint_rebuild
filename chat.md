@@ -321,7 +321,23 @@ all ribbon changes were reapplied and verified.
 **Verification:** MSVC build 0 warnings/0 errors (both targets); selftest 100
 checks, 0 FAIL; GUI smoke launched with title `PaintRebuild - Untitled`.
 
-**Commit:** c2c36d783e519d4c04cc637a936ac68aaf4be006
+**Commit:** c2c36d783e519d4c04cc637a936ac68aaf4be006 (`1ac3814`)
+
+## 2026-11-27 — Session 16 — Progress report + plan cleanup
+
+**Request:** user clarified they wanted "progress %", not a zoom-percentage
+control. An in-progress zoom refactor was reverted (never committed); the repo
+remains at `1ac3814`. Removed a duplicate stale TODO row for stage 8 from
+`PROJECT_PLAN.md` — all 8 stages are DONE.
+
+**Progress:** 8/8 planned stages (100%); 6/6 REA-mapped reference modules
+implemented (BasePaint, PaintTools, ImageProcessing, ProjectFile,
+RestartRecovery, PaintUI shell); 100/100 headless checks; GUI smoke OK.
+Only evidence-only details remain open (exact palette RGB values marked GAP,
+numeric command IDs/CIL behaviour), so functional scope is complete.
+
+**Commit:** b252525e6d3fa4142912a2fbe5f392cfe69e20ac
+
 
 
 

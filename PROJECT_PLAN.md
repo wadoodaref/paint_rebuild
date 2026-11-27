@@ -25,7 +25,6 @@ Stage/module names follow the **observed** shipped module map in
 operations, `CAttributeStore`, shape factory, utilities; `ImageProcessing.dll`
 → codec layer; `ProjectFile.dll` → layered project; `RestartRecovery.dll` →
 autorecovery. We reimplement these boundaries in fresh C++, not copy them.
-| 8 | Final verification: full selftest + smoke script + handoff | zero warnings/errors, all stages pushed | TODO |
 
 ## Non-goals (deliberate, user 2026-11-27)
 - No copying of Microsoft binaries, icons, strings or source **into the
