@@ -534,3 +534,14 @@ closer visual fidelity.
 
 **Commit:** c33e467b18244f2cb1798da205b44281420746dd
 
+
+
+## 2026-11-27 ? Session 29 ? Dropdown chevrons on menu buttons
+
+**Change:** added dropdown chevron indicator to Select, Brushes, Size, Outline
+and Fill command-bar buttons for closer Paint 11 fidelity.
+
+**Verification:** MSVC build 0 warnings/0 errors; selftest 103 checks, 0 FAIL.
+
+**Commit:** d37c33950d1bce90b632189f3001ba45640ea69e
+

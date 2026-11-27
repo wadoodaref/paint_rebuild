@@ -53,6 +53,7 @@ struct CommandButton {
     const wchar_t* label = nullptr;
     const char* icon = nullptr;  // assets/icons/<icon>
     bool toggle = false;
+    bool dropdown = false;
 };
 
 struct CommandLayout {
@@ -300,7 +301,7 @@ static void DrawVSeparator(HDC hdc, int x, int top, int bottom) {
 }
 
 static void DrawCmdBtn(HDC hdc, const RECT& r, const char* icon, const wchar_t* label,
-                       bool selected, bool iconOnly) {
+                       bool selected, bool iconOnly, bool dropdown = false) {
     COLORREF bg = selected ? RGB(204, 228, 247) : RGB(243, 243, 243);
     HBRUSH br = CreateSolidBrush(bg);
     HPEN pen = CreatePen(PS_SOLID, 1, selected ? RGB(153, 209, 255) : RGB(243, 243, 243));
@@ -320,8 +321,18 @@ static void DrawCmdBtn(HDC hdc, const RECT& r, const char* icon, const wchar_t* 
     if (label && !iconOnly) {
         SetBkMode(hdc, TRANSPARENT);
         SetTextColor(hdc, RGB(32,32,32));
-        RECT tr{r.left, r.top + 24, r.right, r.bottom - 1};
+        RECT tr{r.left, r.top + 24, r.right - (dropdown ? 10 : 0), r.bottom - 1};
         DrawTextW(hdc, label, -1, &tr, DT_CENTER | DT_SINGLELINE | DT_VCENTER);
+    }
+    if (dropdown) {
+        const int cx = r.right - 10, cy = r.bottom - 10;
+        POINT pts[3] = {{cx-3, cy-1}, {cx+3, cy-1}, {cx, cy+2}};
+        HBRUSH ar = CreateSolidBrush(RGB(80,80,80));
+        HPEN ap = CreatePen(PS_SOLID, 1, RGB(80,80,80));
+        HGDIOBJ oa = SelectObject(hdc, ar); HGDIOBJ op = SelectObject(hdc, ap);
+        Polygon(hdc, pts, 3);
+        SelectObject(hdc, op); SelectObject(hdc, oa);
+        DeleteObject(ap); DeleteObject(ar);
     }
 }
 
@@ -331,10 +342,10 @@ CommandLayout BuildCommandLayout() {
     int x = 8;
 
     auto addBtn = [&](int bx, int by, int bw, int bh, int cmd, const wchar_t* label,
-                      const char* icon, bool sel = false, bool iconOnly = false) {
+                      const char* icon, bool sel = false, bool iconOnly = false, bool dropdown = false) {
         CommandButton b;
         b.rect = RECT{bx, by, bx + bw, by + bh};
-        b.command = cmd; b.label = label; b.icon = icon; b.toggle = sel;
+        b.command = cmd; b.label = label; b.icon = icon; b.toggle = sel; b.dropdown = dropdown;
         L.buttons.push_back(b);
     };
 
@@ -342,7 +353,7 @@ CommandLayout BuildCommandLayout() {
     const int selLeft = x;
     const bool selActive = (g.toolKind == PaintToolKind::Selection || g.toolKind == PaintToolKind::FreeFormSelection);
     const char* selIcon = (g.toolKind == PaintToolKind::FreeFormSelection) ? "freeform.png" : "select.png";
-    addBtn(x + 10, top + 8, 56, 62, 9004, L"Select", selIcon, selActive);
+    addBtn(x + 10, top + 8, 56, 62, 9004, L"Select", selIcon, selActive, false, true);
     x += 76;
 
     // Image group (matches Paint 11: Crop, Rotate, Flip, Resize and skew; BG removal excluded)
@@ -368,7 +379,7 @@ CommandLayout BuildCommandLayout() {
     // Brushes group
     const int brushLeft = x;
     addBtn(x + 8, top + 8, 52, 62, 807, L"Brushes", "brush.png",
-           g.toolKind == PaintToolKind::Brush || g.toolKind == PaintToolKind::Airbrush || g.toolKind == PaintToolKind::Calligraphic);
+           g.toolKind == PaintToolKind::Brush || g.toolKind == PaintToolKind::Airbrush || g.toolKind == PaintToolKind::Calligraphic, false, true);
     x += 76;
 
     // Shapes group
@@ -412,13 +423,13 @@ CommandLayout BuildCommandLayout() {
         L.shapeButtons.push_back(sb);
     }
     x += 232;
-    addBtn(x + 4, top + 10, 52, 36, 9001, L"Outline", "shape_outline.png", !g_shapeFilled);
-    addBtn(x + 4, top + 50, 52, 36, 9002, L"Fill", "shape_fill.png", g_shapeFilled);
+    addBtn(x + 4, top + 10, 52, 36, 9001, L"Outline", "shape_outline.png", !g_shapeFilled, false, true);
+    addBtn(x + 4, top + 50, 52, 36, 9002, L"Fill", "shape_fill.png", g_shapeFilled, false, true);
     x += 64;
 
     // Size group
     const int sizeLeft = x;
-    addBtn(x + 6, top + 18, 44, 56, 9003, L"Size", "size.png");
+    addBtn(x + 6, top + 18, 44, 56, 9003, L"Size", "size.png", false, false, true);
     x += 60;
 
     // Colors group
@@ -469,7 +480,7 @@ void DrawCommandBar(HDC hdc) {
         DrawTextW(hdc, g_.n, -1, &lr, DT_CENTER | DT_SINGLELINE | DT_VCENTER);
     }
 
-    for (auto& b : L.buttons) DrawCmdBtn(hdc, b.rect, b.icon, b.label, b.toggle, false);
+    for (auto& b : L.buttons) DrawCmdBtn(hdc, b.rect, b.icon, b.label, b.toggle, false, b.dropdown);
     for (auto& sb : L.shapeButtons) {
         bool sel = sb.toggle;
         HBRUSH br = CreateSolidBrush(sel ? RGB(196, 220, 246) : RGB(243, 243, 243));
