@@ -20,6 +20,7 @@
 #include "clipboard_win.h"
 #include "dialogs_win.h"
 #include "recovery.h"
+#include "text_render.h"
 #include "../core/image.h"
 #include "../core/operation.h"
 #include "../tools/tool.h"
@@ -52,6 +53,38 @@ struct AppState {
 };
 
 AppState g;
+
+void WholeImageOperation(OperationKind kind, const std::function<void(Image&)>& mutate);
+
+HWND g_textEdit = nullptr;
+HFONT g_textFont = nullptr;
+pr::Point g_textPos{};
+
+void FinishTextEditor(bool commit) {
+    HWND editor = g_textEdit;
+    g_textEdit = nullptr;  // guard against re-entrant EN_KILLFOCUS
+    if (!editor) return;
+    if (commit) {
+        const int length = GetWindowTextLengthW(editor);
+        std::wstring text(static_cast<std::size_t>(std::max(0, length)), L'\0');
+        if (!text.empty())
+            GetWindowTextW(editor, text.data(), static_cast<int>(text.size()) + 1);
+        if (!text.empty()) {
+            const pr::Point at = g_textPos;
+            const int height = std::max(8, 16 * g.zoom);
+            const pr::Color color = g.foreground;
+            WholeImageOperation(OperationKind::Text, [&](Image& image) {
+                RenderTextIntoImage(image, at, text, color, height);
+            });
+        }
+    }
+    DestroyWindow(editor);
+    if (g_textFont) {
+        DeleteObject(g_textFont);
+        g_textFont = nullptr;
+    }
+    if (g.hwnd) InvalidateRect(g.hwnd, nullptr, TRUE);
+}
 
 const std::array<PaintToolKind, 18> kTools = {
     PaintToolKind::Selection, PaintToolKind::FreeFormSelection,
@@ -86,6 +119,7 @@ void RebuildTool() {
 }
 
 void NewDocument(int width, int height) {
+    FinishTextEditor(false);
     g.image = Image::Create(Size{width, height});
     g.stock.Clear();
     g.filePath.clear();
@@ -268,6 +302,7 @@ bool HandleToolBoxClick(int x, int y) {
         const int bx = 4 + (static_cast<int>(i) / 9) * 28;
         const int by = 6 + (static_cast<int>(i) % 9) * 30;
         if (x >= bx && x <= bx + 26 && y >= by && y <= by + 26) {
+            FinishTextEditor(true);
             g.toolKind = kTools[i];
             RebuildTool();
             InvalidateRect(g.hwnd, nullptr, TRUE);
@@ -553,6 +588,10 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam) 
         case WM_ERASEBKGND:
             return 1;
         case WM_COMMAND:
+            if (HIWORD(wParam) == EN_KILLFOCUS && LOWORD(wParam) == 600) {
+                FinishTextEditor(true);
+                return 0;
+            }
             DoCommand(LOWORD(wParam));
             return 0;
         case WM_LBUTTONDOWN: {
@@ -563,6 +602,27 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam) 
             const pr::Point p = ToImagePoint(x, y);
             if (p.x < 0 || p.y < 0 || p.x >= g.image->width() || p.y >= g.image->height())
                 return 0;
+            if (g.toolKind == PaintToolKind::Text) {
+                FinishTextEditor(true);
+                const RECT canvas = CanvasRect();
+                const int px = canvas.left + p.x * g.zoom;
+                const int py = canvas.top + p.y * g.zoom;
+                const int canvasRight = static_cast<int>(canvas.right);
+                const int canvasBottom = static_cast<int>(canvas.bottom);
+                const int width = std::max(80, std::min(240 * g.zoom, canvasRight - px));
+                const int height = std::max(24, std::min(28 * g.zoom, canvasBottom - py));
+                g_textPos = p;
+                g_textEdit = CreateWindowExW(
+                    0, L"Edit", L"",
+                    WS_CHILD | WS_VISIBLE | ES_MULTILINE | ES_WANTRETURN | WS_BORDER | WS_TABSTOP,
+                    px, py, width, height, hwnd, reinterpret_cast<HMENU>(600), nullptr, nullptr);
+                g_textFont = CreateFontW(16 * g.zoom, 0, 0, 0, FW_NORMAL, 0, 0, 0,
+                                         DEFAULT_CHARSET, OUT_TT_PRECIS, CLIP_DEFAULT_PRECIS,
+                                         ANTIALIASED_QUALITY, FF_DONTCARE, L"Segoe UI");
+                SendMessageW(g_textEdit, WM_SETFONT, reinterpret_cast<WPARAM>(g_textFont), TRUE);
+                SetFocus(g_textEdit);
+                return 0;
+            }
             if (g.tool) g.tool->OnStylusDown(p);
             g.drawing = true;
             SetCapture(hwnd);
@@ -628,6 +688,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam) 
             InvalidateRect(hwnd, nullptr, TRUE);
             return 0;
         case WM_CLOSE:
+            FinishTextEditor(true);
             if (!g.stock.IsDirty()) ClearRecovery(FindLatestRecovery());
             KillTimer(hwnd, 7001);
             DestroyWindow(hwnd);

@@ -45,9 +45,11 @@ powershell -ExecutionPolicy Bypass -File run.ps1
   Attributes / Stretch-Skew / Flip-Rotate / Edit Colors dialogs.
 - Autorecovery is now implemented (60s snapshot, startup recovery prompt,
   cleanup on save/close) — the `RestartRecovery.dll` analog is complete.
-- Remaining fidelity work (stage 7 backlog, not required for the workflow):
-  DirectWrite text rendering and paging the `PaintUI.winmd` type list through
-  the REA CLI (MCP response budget blocked it).
+- All 8 planned stages are complete; text now renders into the image via an
+  in-place Edit control + GDI DIB commit.
+- Optional future research only: page the `PaintUI.winmd` type list through the
+  REA CLI (MCP response budget blocked it) if more command-level fidelity is
+  wanted. No functional gap remains in the core Paint workflow.
 - **Offline reference bundle** (no search needed on another PC):
   `reference/paint-11.2609.441.0/` — 11 verified core artifacts + `manifest.json`.
   Verify with `tools\rea\verify_reference.ps1`, list REA calls with

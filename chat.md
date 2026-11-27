@@ -223,7 +223,23 @@ Win32 shell. This completes the last REA-mapped module in the backlog.
 checks, 0 FAIL; GUI smoke launched with title `PaintRebuild - Untitled`.
 Recovery directory starts empty as expected on a clean session.
 
-**Commit:** f4a7c1c5af9d0370b04f0c090b5a0828f8b78e72
+**Commit:** f4a7c1c5af9d0370b04f0c090b5a0828f8b78e72 (`2742834`)
+
+## 2026-11-27 — Session 11 — Text tool rendering (final functional gap)
+
+**Change:** added `src/app/text_render.cpp/.h` — commits typed text into the
+image through a GDI DIB section with a Segoe UI font and transparent background.
+The shell now creates an in-place multiline `Edit` control when the Text tool is
+clicked, and commits the text as an undoable `SnapshotOperation` when focus
+leaves it, another tool is chosen, a new document starts, or the window closes.
+`TextTool` in the headless model remains the frame placeholder; rendering lives
+in the Win32 stage where GDI is available.
+
+**Verification:** MSVC build 0 warnings/0 errors (both targets); selftest 93
+checks, 0 FAIL; GUI smoke launched with title `PaintRebuild - Untitled`.
+
+**Commit:** 01f497f010573d2850aa6f8b3e9c1ff499aa60eb
+
 
 
 
