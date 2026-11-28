@@ -823,3 +823,13 @@ No source changes in this entry (self-referential; its own hash is in git log).
 **Change:** updated `src/app/ui_theme.h` to use the Paint 11 SVG-extracted `#005FB8` (`RGB(0, 95, 184)`) for `kSliderFill` and `kBtnCheckedBorder`, `#373737` (`RGB(55, 55, 55)`) for `kTextPrimary`, and `#555555` (`RGB(85, 85, 85)`) for `kGroupText` (replacing the Office 16 `#0078D7` / `#60A0F0` tokens). Recorded the extracted color and font evidence in `docs/evidence/PAINT_MODULES.md`.
 
 **Verification:** MSVC build 0 warnings/0 errors (both targets); `pr_selftest.exe` 117 checks, 0 FAIL; GUI smoke launched `paintrebuild.exe` (`alive=True`).
+
+## 2026-11-28 — Session 49 — Windows 11 DWM titlebar styling and Clipboard/QAT command group
+
+**Request:** "I want 1:1 parity"
+
+**Change:** added two high-visibility Paint 11 UI parity improvements in `src/app/main.cpp`:
+- **Windows 11 `#F3F3F3` caption bar (`WM_CREATE`):** dynamically loads `dwmapi.dll` and calls `DwmSetWindowAttribute` (`DWMWA_CAPTION_COLOR = 35` -> `ui_theme::kSurface`, `DWMWA_TEXT_COLOR = 36` -> `ui_theme::kTextPrimary`) for a seamless Paint 11 titlebar.
+- **Clipboard / Quick-Actions group (`BuildCommandLayout`, `DrawCommandBar`):** added a 3×2 compact group at the left of the command bar with `Save` (`save.png`), `Undo` (`↶`, disabled when `!g.stock.CanUndo()`), `Redo` (`↷`, disabled when `!g.stock.CanRedo()`), `Cut` (`office_cut.png`), `Copy` (`office_copy.png`), and `Paste` (`office_paste.png`), and widened the default window to `1340×820` so all 8 command-bar groups fit cleanly.
+
+**Verification:** MSVC build 0 warnings/0 errors (both targets); `pr_selftest.exe` 117 checks, 0 FAIL; GUI smoke launched `paintrebuild.exe` (`alive=True`).

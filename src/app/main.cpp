@@ -471,6 +471,18 @@ CommandLayout BuildCommandLayout() {
         L.buttons.push_back(b);
     };
 
+    // Quick Actions & Clipboard (3x2: Save, Undo, Redo / Cut, Copy, Paste)
+    const int qatLeft = x;
+    addBtn(x + 4, top + 4, 28, 34, 102, nullptr, "save.png", false, false, true);
+    addBtn(x + 34, top + 4, 28, 34, 200, L"\u21B6", nullptr, false, false, g.stock.CanUndo());
+    addBtn(x + 64, top + 4, 28, 34, 201, L"\u21B7", nullptr, false, false, g.stock.CanRedo());
+    addBtn(x + 4, top + 42, 28, 34, 202, nullptr, "office_cut.png", false, false, true);
+    addBtn(x + 34, top + 42, 28, 34, 203, nullptr, "office_copy.png", false, false, true);
+    addBtn(x + 64, top + 42, 28, 34, 204, nullptr, "office_paste.png", false, false, true);
+    x += 96;
+    L.groups.push_back({L"Clipboard", qatLeft, x});
+    x += 6;
+
     // Selection group
     const int selLeft = x;
     const bool selActive = (g.toolKind == PaintToolKind::Selection ||
@@ -636,9 +648,18 @@ void DrawCommandBar(HDC hdc) {
     }
 
     for (const auto& b : L.buttons) {
-        const bool iconOnly = (b.label == nullptr);
+        const bool iconOnly = (b.label == nullptr) || (b.icon == nullptr && b.label != nullptr);
         const bool hovered = (g_hoverCmd == b.command && b.command != 0);
-        DrawCmdBtn(hdc, b.rect, b.icon, b.label, b.toggle, hovered, iconOnly, b.dropdown, b.enabled);
+        if (b.icon == nullptr && b.label != nullptr) {
+            // Glyph-only button (e.g. Undo / Redo)
+            DrawCmdBtn(hdc, b.rect, nullptr, nullptr, b.toggle, hovered, true, false, b.enabled);
+            SetBkMode(hdc, TRANSPARENT);
+            SetTextColor(hdc, b.enabled ? ui_theme::kTextPrimary : ui_theme::kDisabledText);
+            RECT tr = b.rect;
+            DrawTextW(hdc, b.label, -1, &tr, DT_CENTER | DT_SINGLELINE | DT_VCENTER);
+        } else {
+            DrawCmdBtn(hdc, b.rect, b.icon, b.label, b.toggle, hovered, iconOnly, b.dropdown, b.enabled);
+        }
     }
 
     for (int i = 0; i < static_cast<int>(L.shapeButtons.size()); ++i) {
@@ -1675,6 +1696,17 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam) 
         }
         case WM_CREATE: {
             g.hwnd = hwnd;
+            // Apply Windows 11 Paint-matching #F3F3F3 caption bar via DWM when available.
+            if (HMODULE dwm = LoadLibraryW(L"dwmapi.dll")) {
+                using DwmSetFn = HRESULT(WINAPI*)(HWND, DWORD, LPCVOID, DWORD);
+                if (auto fn = reinterpret_cast<DwmSetFn>(GetProcAddress(dwm, "DwmSetWindowAttribute"))) {
+                    const COLORREF cap = ui_theme::kSurface;
+                    const COLORREF txt = ui_theme::kTextPrimary;
+                    fn(hwnd, 35 /*DWMWA_CAPTION_COLOR*/, &cap, sizeof(cap));
+                    fn(hwnd, 36 /*DWMWA_TEXT_COLOR*/, &txt, sizeof(txt));
+                }
+                FreeLibrary(dwm);
+            }
             HMENU menu = CreateMenu();
             HMENU file = CreatePopupMenu();
             AppendMenuW(file, MF_STRING, 100, L"&New");
@@ -2043,7 +2075,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR cmdLine, int show) {
     RegisterClassW(&wc);
     HWND hwnd = CreateWindowExW(0, L"PaintRebuildWindow", L"PaintRebuild",
                                 WS_OVERLAPPEDWINDOW | WS_CLIPCHILDREN,
-                                CW_USEDEFAULT, CW_USEDEFAULT, 1280, 800,
+                                CW_USEDEFAULT, CW_USEDEFAULT, 1340, 820,
                                 nullptr, nullptr, instance, nullptr);
     if (!hwnd) {
         CoUninitialize();
