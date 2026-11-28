@@ -1239,6 +1239,37 @@ void UpdateHover(int x, int y) {
     }
 }
 
+bool OpenDocumentPath(const std::wstring& p) {
+    std::unique_ptr<Image> loaded = (DetectFormat(p) == ImageFormat::Bmp) ? LoadBmp(p) : LoadImageWic(p);
+    if (!loaded) return false;
+    FinishTextEditor(false);
+    g.image = std::move(loaded);
+    g.stock.Clear();
+    g.filePath = p;
+    g_scrollX = g_scrollY = 0;
+    RebuildTool();
+    UpdateThumbnailImage(g.image.get());
+    UpdatePrintPreviewImage(g.image.get());
+    SetTitle();
+    InvalidateRect(g.hwnd, nullptr, TRUE);
+    return true;
+}
+
+bool PromptSaveIfDirty() {
+    FinishTextEditor(true);
+    if (!g.stock.IsDirty()) return true;
+    const std::wstring name = g.filePath.empty() ? L"Untitled" : g.filePath;
+    const std::wstring msg = L"Do you want to save changes to " + name + L"?";
+    const int ans = MessageBoxW(g.hwnd, msg.c_str(), L"PaintRebuild",
+                                MB_YESNOCANCEL | MB_ICONQUESTION);
+    if (ans == IDCANCEL) return false;
+    if (ans == IDYES) {
+        DoCommand(102);
+        return !g.stock.IsDirty();
+    }
+    return true;
+}
+
 void SelectFile(bool save) {
     wchar_t path[MAX_PATH] = {};
     OPENFILENAMEW ofn{};
@@ -1265,22 +1296,8 @@ void SelectFile(bool save) {
             MessageBoxW(g.hwnd, L"The image could not be saved.", L"PaintRebuild", MB_OK);
         }
     } else {
-        std::unique_ptr<Image> loaded;
-        const std::wstring p(path);
-        if (DetectFormat(p) == ImageFormat::Bmp) loaded = LoadBmp(p);
-        else loaded = LoadImageWic(p);
-        if (loaded) {
-            g.image = std::move(loaded);
-            g.stock.Clear();
-            g.filePath = p;
-            RebuildTool();
-            UpdateThumbnailImage(g.image.get());
-    UpdatePrintPreviewImage(g.image.get());
-            SetTitle();
-            InvalidateRect(g.hwnd, nullptr, TRUE);
-        } else {
+        if (!OpenDocumentPath(path))
             MessageBoxW(g.hwnd, L"The image could not be opened.", L"PaintRebuild", MB_OK);
-        }
     }
 }
 
@@ -1454,8 +1471,12 @@ void DoCommand(WORD id) {
         return;
     }
     switch (id) {
-        case 100: NewDocument(800, 600); SetTitle(); break;
-        case 101: SelectFile(false); break;
+        case 100:
+            if (PromptSaveIfDirty()) { NewDocument(800, 600); SetTitle(); }
+            break;
+        case 101:
+            if (PromptSaveIfDirty()) SelectFile(false);
+            break;
         case 102:
             if (!g.filePath.empty()) {
                 const bool written = (DetectFormat(g.filePath) == ImageFormat::Bmp)
@@ -1473,7 +1494,7 @@ void DoCommand(WORD id) {
             }
             break;
         case 103: SelectFile(true); break;
-        case 104: PostQuitMessage(0); break;
+        case 104: SendMessageW(g.hwnd, WM_CLOSE, 0, 0); break;
         case 105: SetAsWallpaper(g.image.get(), false); break;
         case 106: SetAsWallpaper(g.image.get(), true); break;
         case 107: PrintImage(g.hwnd, *g.image); break;
@@ -1720,7 +1741,18 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam) 
                 }
                 ClearRecovery(recovery);
             }
+            DragAcceptFiles(hwnd, TRUE);
             SetTimer(hwnd, 7001, 60000, nullptr);  // autorecovery heartbeat
+            return 0;
+        }
+        case WM_DROPFILES: {
+            HDROP drop = reinterpret_cast<HDROP>(wParam);
+            wchar_t path[MAX_PATH] = {};
+            if (DragQueryFileW(drop, 0, path, MAX_PATH) > 0 && PromptSaveIfDirty()) {
+                if (!OpenDocumentPath(path))
+                    MessageBoxW(hwnd, L"The dropped file could not be opened.", L"PaintRebuild", MB_OK);
+            }
+            DragFinish(drop);
             return 0;
         }
         case WM_TIMER:
@@ -1963,8 +1995,8 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam) 
             InvalidateRect(hwnd, nullptr, TRUE);
             return 0;
         case WM_CLOSE:
-            FinishTextEditor(true);
-            if (!g.stock.IsDirty()) ClearRecovery(FindLatestRecovery());
+            if (!PromptSaveIfDirty()) return 0;
+            ClearRecovery(FindLatestRecovery());
             KillTimer(hwnd, 7001);
             DestroyWindow(hwnd);
             return 0;
@@ -1978,7 +2010,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam) 
 
 }  // namespace
 
-int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int show) {
+int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR cmdLine, int show) {
     CoInitialize(nullptr);
     g.attributes.Add(1, 1);    // thickness
     g.attributes.Add(2, 0.0);  // tolerance (REA attribute IDs are GAP values)
@@ -1996,6 +2028,12 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int show) {
     if (!hwnd) {
         CoUninitialize();
         return 1;
+    }
+    if (cmdLine && *cmdLine) {
+        std::wstring arg(cmdLine);
+        while (!arg.empty() && (arg.front() == L' ' || arg.front() == L'"')) arg.erase(arg.begin());
+        while (!arg.empty() && (arg.back() == L' ' || arg.back() == L'"')) arg.pop_back();
+        if (!arg.empty()) OpenDocumentPath(arg);
     }
     ShowWindow(hwnd, show);
     UpdateWindow(hwnd);

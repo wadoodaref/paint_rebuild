@@ -781,3 +781,13 @@ No source changes in this entry (self-referential; its own hash is in git log).
 - **Text `Esc` & Polygon `Enter`:** `Esc` cancels an open in-place text editor without committing; `OnKeyDown` updates `g.drawing`, title, and repaints so closing a `Polygon` with `Enter` refreshes immediately.
 
 **Verification:** MSVC build 0 warnings/0 errors (both targets); `pr_selftest.exe` 117 checks, 0 FAIL; GUI smoke launched `paintrebuild.exe` (`alive=True`).
+
+## 2026-11-28 — Session 45 — Unsaved-changes prompt, drag-and-drop open, and CLI file arg
+
+**Request:** "proceed"
+
+**Change:** added standard Paint document lifecycle handling in `src/app/main.cpp`:
+- **`OpenDocumentPath` & `PromptSaveIfDirty`:** asks `Yes / No / Cancel` when `g.stock.IsDirty()` before `New`, `Open`, `Exit` / `WM_CLOSE`, or dropping a file (cancels the action if `Cancel` or if `Save` is cancelled).
+- **Drag-and-drop & CLI open:** enabled `DragAcceptFiles` + `WM_DROPFILES` handler, and wired `wWinMain` `cmdLine` to open a file path passed at launch.
+
+**Verification:** MSVC build 0 warnings/0 errors (both targets); `pr_selftest.exe` 117 checks, 0 FAIL; GUI smoke launched `paintrebuild.exe` (`alive=True`).
