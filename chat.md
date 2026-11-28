@@ -919,3 +919,16 @@ single undoable `SnapshotOperation` (`OperationKind::Selection`).
 
 **Commit:** 07d875f199dd1cc032a643f4fbea5bfc214c7f41
 
+
+
+## 2026-11-28 - Session 56 - In-place text editor background and ink
+
+**Change:** `WM_CTLCOLOREDIT` now paints the in-place Text editor with the
+current background color and foreground ink when the Text tab's Opaque toggle
+is active, so the on-screen editor matches what `RenderTextIntoImage` commits.
+
+**Verification:** MSVC build 0 warnings/0 errors (both targets); `pr_selftest.exe`
+117 checks, 0 FAIL; GUI smoke launched `Untitled - PaintRebuild`.
+
+**Commit:** 21c1c352eb5b42aaadf9ed5a890793f345c1f4f2
+

@@ -2317,6 +2317,22 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam) 
         case WM_DESTROY:
             PostQuitMessage(0);
             return 0;
+        case WM_CTLCOLOREDIT:
+            if (reinterpret_cast<HWND>(lParam) == g_textEdit && g_textOpaqueBackground) {
+                static HBRUSH brush = nullptr;
+                static COLORREF lastColor = 0xFFFFFFFFu;
+                const COLORREF bg = RGB(Red(g.background), Green(g.background), Blue(g.background));
+                if (!brush || lastColor != bg) {
+                    if (brush) DeleteObject(brush);
+                    brush = CreateSolidBrush(bg);
+                    lastColor = bg;
+                }
+                SetBkColor(reinterpret_cast<HDC>(wParam), bg);
+                SetTextColor(reinterpret_cast<HDC>(wParam),
+                             RGB(Red(g.foreground), Green(g.foreground), Blue(g.foreground)));
+                return reinterpret_cast<LRESULT>(brush);
+            }
+            return DefWindowProcW(hwnd, message, wParam, lParam);
         default:
             return DefWindowProcW(hwnd, message, wParam, lParam);
     }
