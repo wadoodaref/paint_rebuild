@@ -9,7 +9,8 @@ namespace {
 
 constexpr double kPi = 3.14159265358979323846;
 
-void AddLine(Image& image, Point a, Point b, Color c) {
+void AddThickLine(Image& image, Point a, Point b, Color c, int thickness) {
+    const int radius = std::max(0, (thickness - 1) / 2);
     int x0 = a.x;
     int y0 = a.y;
     const int dx = std::abs(b.x - x0);
@@ -18,7 +19,14 @@ void AddLine(Image& image, Point a, Point b, Color c) {
     const int sy = y0 < b.y ? 1 : -1;
     int err = dx + dy;
     for (;;) {
-        image.SetPixel(Point{x0, y0}, c);
+        if (radius == 0) {
+            image.SetPixel(Point{x0, y0}, c);
+        } else {
+            for (int oy = -radius; oy <= radius; ++oy)
+                for (int ox = -radius; ox <= radius; ++ox)
+                    if (ox * ox + oy * oy <= radius * radius + radius)
+                        image.SetPixel(Point{x0 + ox, y0 + oy}, c);
+        }
         if (x0 == b.x && y0 == b.y) break;
         const int e2 = 2 * err;
         if (e2 >= dy) { err += dy; x0 += sx; }
@@ -89,6 +97,8 @@ std::vector<Point> ShapePoints(ShapeKind kind, const Rect& input) {
         }
         case ShapeKind::Triangle:
             return {at(0.5, 0), at(1, 1), at(0, 1)};
+        case ShapeKind::RightTriangle:
+            return {at(0, 0), at(1, 1), at(0, 1)};
         case ShapeKind::Diamond:
             return {at(0.5, 0), at(1, 0.5), at(0.5, 1), at(0, 0.5)};
         case ShapeKind::Pentagon:
@@ -160,7 +170,8 @@ const char* ShapeName(ShapeKind kind) {
         case ShapeKind::Rectangle: return "Rectangle";
         case ShapeKind::RoundedRectangle: return "Rounded rectangle";
         case ShapeKind::Ellipse: return "Oval";
-        case ShapeKind::Triangle: return "Right triangle";
+        case ShapeKind::Triangle: return "Triangle";
+        case ShapeKind::RightTriangle: return "Right triangle";
         case ShapeKind::Diamond: return "Diamond";
         case ShapeKind::Pentagon: return "Pentagon";
         case ShapeKind::Hexagon: return "Hexagon";
@@ -180,9 +191,14 @@ const char* ShapeName(ShapeKind kind) {
     return "Shape";
 }
 
-void DrawShape(Image& image, const Rect& bounds, ShapeKind kind, Color color, bool filled) {
+void DrawShape(Image& image, const Rect& bounds, ShapeKind kind, Color color, bool filled,
+               int thickness, Color fillColor) {
     const auto points = ShapePoints(kind, bounds);
     if (points.empty()) return;
+    const Color interior = (Alpha(fillColor) == 0 && Red(fillColor) == 0 &&
+                            Green(fillColor) == 0 && Blue(fillColor) == 0)
+                               ? color
+                               : fillColor;
     if (filled) {
         int minY = points[0].y;
         int maxY = points[0].y;
@@ -203,12 +219,12 @@ void DrawShape(Image& image, const Rect& bounds, ShapeKind kind, Color color, bo
             for (std::size_t i = 0; i + 1 < crossings.size(); i += 2) {
                 const int from = static_cast<int>(std::ceil(crossings[i] - 0.5));
                 const int to = static_cast<int>(std::floor(crossings[i + 1] + 0.5));
-                for (int x = from; x <= to; ++x) image.SetPixel(Point{x, y}, color);
+                for (int x = from; x <= to; ++x) image.SetPixel(Point{x, y}, interior);
             }
         }
     }
     for (std::size_t i = 0; i < points.size(); ++i)
-        AddLine(image, points[i], points[(i + 1) % points.size()], color);
+        AddThickLine(image, points[i], points[(i + 1) % points.size()], color, thickness);
 }
 
 }  // namespace pr

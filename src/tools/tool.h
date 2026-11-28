@@ -5,6 +5,7 @@
 #pragma once
 
 #include <memory>
+#include <vector>
 
 #include "../core/attributes.h"
 #include "../core/color.h"
@@ -144,6 +145,41 @@ public:
     void OnStylusUp(const Point& p) override;
 };
 
+// 3-step cubic Bezier curve tool (PaintTools.dll CBezierTool analog):
+// step 0 = drag endpoints p0->p1, step 1 = set c1, step 2 = set c2 & commit.
+class CBezierTool : public CPaintTool {
+public:
+    explicit CBezierTool(ToolContext& context) : CPaintTool(context, PaintToolKind::Curve) {}
+    void OnStylusDown(const Point& p) override;
+    void OnStylusMove(const Point& p) override;
+    void OnStylusUp(const Point& p) override;
+    void OnCancel() override;
+
+private:
+    int stage_ = 0;
+    Point p0_{}, p1_{}, c1_{}, c2_{};
+    void DrawCurve();
+};
+
+// Multi-vertex polygon tool (PaintTools.dll CPaintPolygonTool analog).
+class CPaintPolygonTool : public CPaintTool {
+public:
+    explicit CPaintPolygonTool(ToolContext& context, bool filled = false)
+        : CPaintTool(context, PaintToolKind::Polygon), filled_(filled) {}
+    void OnStylusDown(const Point& p) override;
+    void OnStylusMove(const Point& p) override;
+    void OnStylusUp(const Point& p) override;
+    void OnKeyDown(unsigned virtualKey) override;
+    void OnCancel() override;
+
+private:
+    bool filled_ = false;
+    std::vector<Point> vertices_;
+    Point previewEnd_{};
+    void DrawPolygon(bool close);
+    void CommitPolygon();
+};
+
 class CRectTool : public CPaintTool {
 public:
     CRectTool(ToolContext& context, PaintToolKind kind, bool filled,
@@ -165,6 +201,19 @@ public:
     void OnStylusDown(const Point& p) override;
     void OnStylusMove(const Point& p) override;
     void OnStylusUp(const Point& p) override;
+};
+
+class FreeFormSelectionTool : public CPaintTool {
+public:
+    explicit FreeFormSelectionTool(ToolContext& context)
+        : CPaintTool(context, PaintToolKind::FreeFormSelection) {}
+    void OnStylusDown(const Point& p) override;
+    void OnStylusMove(const Point& p) override;
+    void OnStylusUp(const Point& p) override;
+    const std::vector<Point>& Points() const { return points_; }
+
+private:
+    std::vector<Point> points_;
 };
 
 class ZoomTool : public CPaintTool {

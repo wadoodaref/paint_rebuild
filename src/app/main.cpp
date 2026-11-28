@@ -495,7 +495,7 @@ CommandLayout BuildCommandLayout() {
         {"oval.png", ShapeKind::Ellipse, 815}, {"rectangle.png", ShapeKind::Rectangle, 814},
         {"rounded_rect.png", ShapeKind::RoundedRectangle, 816}, {"polygon.png", ShapeKind::Rectangle, 813},
         {"triangle.png", ShapeKind::Triangle, 600 + (int)ShapeKind::Triangle},
-        {"right_triangle.png", ShapeKind::Triangle, 600 + (int)ShapeKind::Triangle},
+        {"right_triangle.png", ShapeKind::RightTriangle, 600 + (int)ShapeKind::RightTriangle},
         {"diamond.png", ShapeKind::Diamond, 600 + (int)ShapeKind::Diamond},
         {"pentagon.png", ShapeKind::Pentagon, 600 + (int)ShapeKind::Pentagon},
         {"hexagon.png", ShapeKind::Hexagon, 600 + (int)ShapeKind::Hexagon},
@@ -1222,7 +1222,7 @@ void SelectFile(bool save) {
 }
 
 void DoCommand(WORD id) {
-    if (id >= 600 && id <= 618) {
+    if (id >= 600 && id <= 619) {
         g_shapeKind = static_cast<ShapeKind>(id - 600);
         g.toolKind = PaintToolKind::AutoShape;
         RebuildTool();
@@ -1644,6 +1644,10 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam) 
             if (g.toolKind == PaintToolKind::Zoom) {
                 if (auto* z = dynamic_cast<ZoomTool*>(g.tool.get())) g.zoom = std::max(1, std::min(16, z->ZoomFactor()));
             }
+            if (g.toolKind == PaintToolKind::PickColor && g.context) {
+                g.foreground = g.context->foreground;
+                RebuildTool();
+            }
             g.drawing = true;
             SetCapture(hwnd);
             InvalidateRect(hwnd, nullptr, TRUE);
@@ -1730,7 +1734,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam) 
             if (g.drawing && g.tool) {
                 const pr::Point p = ToImagePoint(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
                 g.tool->OnStylusUp(p);
-                g.drawing = false;
+                g.drawing = g.tool->IsDrawing();
                 ReleaseCapture();
                 SetTitle();
                 InvalidateRect(hwnd, nullptr, TRUE);

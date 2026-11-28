@@ -17,6 +17,7 @@ enum class ShapeKind {
     RoundedRectangle,
     Ellipse,
     Triangle,
+    RightTriangle,
     Diamond,
     Pentagon,
     Hexagon,
@@ -39,6 +40,7 @@ const char* ShapeName(ShapeKind kind);
 
 // Draws an outline (always) and optionally fills the interior. The outline
 // uses Bresenham segments; the fill uses an even-odd scanline rule.
-void DrawShape(Image& image, const Rect& bounds, ShapeKind kind, Color color, bool filled);
+void DrawShape(Image& image, const Rect& bounds, ShapeKind kind, Color color, bool filled,
+               int thickness = 1, Color fillColor = MakeColor(0, 0, 0, 0));
 
 }  // namespace pr

@@ -22,10 +22,13 @@ DialogState g_dialog;
 
 HWND AddControl(HWND parent, const wchar_t* classname, const wchar_t* text,
                 DWORD style, int id, int x, int y, int w, int h) {
+    static HFONT font = CreateFontW(-12, 0, 0, 0, FW_NORMAL, 0, 0, 0, DEFAULT_CHARSET,
+                                    0, 0, CLEARTYPE_QUALITY, 0, L"Segoe UI");
     HWND control = CreateWindowExW(0, classname, text,
                                    WS_CHILD | WS_VISIBLE | style, x, y, w, h,
                                    parent, reinterpret_cast<HMENU>(static_cast<intptr_t>(id)),
                                    nullptr, nullptr);
+    if (control && font) SendMessageW(control, WM_SETFONT, reinterpret_cast<WPARAM>(font), TRUE);
     return control;
 }
 
@@ -185,7 +188,7 @@ bool ShowFlipRotateDialog(HWND owner, FlipRotateOptions& options) {
 bool ShowAttributesDialog(HWND owner, int& width, int& height) {
     g_dialog.values[0] = width;
     g_dialog.values[1] = height;
-    if (!RunModal(owner, DialogKind::Attributes, L"Attributes", 260, 130)) return false;
+    if (!RunModal(owner, DialogKind::Attributes, L"Image Properties", 320, 230)) return false;
     width = g_dialog.values[0];
     height = g_dialog.values[1];
     return true;

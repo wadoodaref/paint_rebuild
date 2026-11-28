@@ -599,3 +599,19 @@ consistent Paint 11-like typography.
 - **Canvas, rulers & status bar:** centered the canvas in the workspace when smaller than the viewport and added mouse-wheel/Shift+wheel panning when zoomed/larger; moved rulers into a dedicated `kRulerSize` margin outside the canvas so they no longer cover the top-left pixels; added `fit_window.png` / `zoom_in.png` / `zoom_out.png` icons, selection dimensions, and draggable zoom slider to the status bar; added live `OnStylusMove` repainting and context-aware cursors (`IDC_CROSS`, `IDC_IBEAM`, resize handles).
 
 **Verification:** MSVC build 0 warnings/0 errors (both targets); `pr_selftest.exe` 103 checks, 0 FAIL; GUI smoke launched `paintrebuild.exe` (`alive=True`).
+
+## 2026-11-28 — Session 35 — Module fidelity pass (Curve, Polygon, brushes, opacity, RightTriangle, dialogs)
+
+**Request:** "proceed to finish all modules faithful"
+
+**Change:** completed functional fidelity across the core shapes, tools, and Win32 dialogs:
+- **Shapes (`src/core/shapes.h/.cpp`):** added `ShapeKind::RightTriangle` (wired to `right_triangle.png` in `src/app/main.cpp`), and extended `DrawShape` with `thickness` and `fillColor` (defaulting to `Color 1` outline + `Color 2` interior fill when filled).
+- **Tools (`src/tools/tool.h/.cpp`):**
+  - Implemented `CBezierTool` (`PaintToolKind::Curve`, 3-step cubic Bézier: endpoints then two control bends) and `CPaintPolygonTool` (`PaintToolKind::Polygon`, multi-vertex click/drag with close-on-first-vertex or `Enter`, `Esc` cancel).
+  - Implemented `FreeFormSelectionTool` (`PaintToolKind::FreeFormSelection`, lasso point tracking + bounding selection rect).
+  - Differentiated brush presets in `CStrokeTool::Stamp` (`Calligraphic` 45° nib, `Airbrush` speckled spray, `Marker` translucent chisel, `Crayon` wax grain, `NaturalPencil` graphite grain, `OilBrush` soft falloff, `Watercolor` translucent wash) and added alpha-blended `opacity_` support (fixing single-click double-stamping in `OnStylusUp`).
+  - Wired `CRectTool::DrawShape()` to pass `thickness_` and `context_.background` fill color.
+- **Win32 shell & dialogs (`src/app/dialogs_win.cpp`, `src/app/main.cpp`):** fixed `ShowAttributesDialog` (`Image Properties`) window size (`320×230`) so OK/Cancel buttons are no longer clipped off-screen, applied `Segoe UI` ClearType font to all modal dialog controls, synced `PickColorTool` back to `g.foreground`, and preserved `g.drawing` across multi-stage `Curve`/`Polygon` clicks.
+- **Selftests (`src/tests/selftest.cpp`):** added `TestFidelityTools()` and `RightTriangle` coverage (`113 checks, 0 FAIL`).
+
+**Verification:** MSVC build 0 warnings/0 errors (both targets); `pr_selftest.exe` 113 checks, 0 FAIL; GUI smoke launched `PaintRebuild - Untitled` (`alive=True`).

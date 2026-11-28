@@ -7,11 +7,17 @@ one coherent change = one commit + one push, `git fetch` before work and before
 every push, regenerate per-machine `GITIGNORED_FILES_<machine>.md` on every
 push).
 
-## Current state (2026-11-27)
-- Stages 0–5 DONE and verified: scaffold, rules v7, REA evidence map, core
-  `Image`/attributes/geometry, operation stock with undo/redo, the
-  `CPaintTool`-style tool set, a native BMP codec, and layered project +
-  clipboard. `pr_selftest.exe`: 93 checks, 0 FAIL.
+## Current state (2026-11-28)
+- Stages 0–8 DONE and verified, plus UI & module fidelity passes: scaffold,
+  rules v7, REA evidence map, core `Image`/attributes/geometry, 20 auto-shapes
+  (including `RightTriangle`), operation stock with undo/redo, full
+  `CPaintTool` set (`CBezierTool` 3-step Curve, `CPaintPolygonTool`,
+  `FreeFormSelectionTool`, 9 differentiated brush presets with opacity
+  blending), native BMP + WIC codecs, layered project + system `CF_DIB`
+  clipboard, Paint 11 Win32 shell (dynamic command bar, 8×3 shape gallery,
+  selectable Color 1/2, responsive draggable Size/Opacity/Zoom sliders,
+  margin rulers, centered/pannable canvas), modal `Segoe UI` dialogs, and
+  autorecovery. `pr_selftest.exe`: 113 checks, 0 FAIL.
 - Explicitly out of scope by user instruction: copied licence/NOTICE files and
   cloud/AI/provenance/telemetry modules (observed in REA, never implemented).
 - MSVC 14.44 auto-detected from

@@ -296,6 +296,50 @@ static void TestShapes() {
     auto filled = Image::Create(Size{24, 24});
     DrawShape(*filled, Rect{2, 2, 16, 16}, ShapeKind::Ellipse, palette::Blue(), true);
     CHECK(filled->GetPixel(Point{10, 10}).argb == palette::Blue().argb);
+
+    const auto rtri = ShapePoints(ShapeKind::RightTriangle, Rect{0, 0, 10, 10});
+    CHECK(rtri.size() == 3);
+    CHECK(rtri[0].x == 0 && rtri[0].y == 0);
+}
+
+static void TestFidelityTools() {
+    auto img = Image::Create(Size{32, 32});
+    COperationStock stock;
+    CAttributeStore attrs;
+    ToolContext ctx(*img, stock, attrs, palette::Red(), palette::White());
+
+    // Curve (3-step Bezier)
+    auto curve = CreatePaintTool(ctx, PaintToolKind::Curve);
+    curve->OnStylusDown(Point{2, 16});
+    curve->OnStylusMove(Point{28, 16});
+    curve->OnStylusUp(Point{28, 16});
+    CHECK(curve->IsDrawing());
+    curve->OnStylusDown(Point{10, 4});
+    curve->OnStylusUp(Point{10, 4});
+    CHECK(curve->IsDrawing());
+    curve->OnStylusDown(Point{20, 28});
+    curve->OnStylusUp(Point{20, 28});
+    CHECK(!curve->IsDrawing());
+    CHECK(stock.CanUndo());
+    CHECK(stock.Undo(*img));
+
+    // Polygon (multi-vertex + close on first vertex)
+    auto poly = CreatePaintTool(ctx, PaintToolKind::Polygon);
+    poly->OnStylusDown(Point{4, 4});
+    poly->OnStylusUp(Point{20, 4});
+    poly->OnStylusDown(Point{20, 20});
+    poly->OnStylusUp(Point{20, 20});
+    poly->OnStylusDown(Point{4, 4});
+    CHECK(!poly->IsDrawing());
+    CHECK(img->GetPixel(Point{4, 4}).argb == palette::Red().argb);
+
+    // Opacity blending on an untouched white pixel
+    auto brush = CreatePaintTool(ctx, PaintToolKind::Brush);
+    brush->SetOpacity(0.5);
+    brush->OnStylusDown(Point{10, 22});
+    brush->OnStylusUp(Point{10, 22});
+    const Color blended = img->GetPixel(Point{10, 22});
+    CHECK(Red(blended) > 120 && Green(blended) > 100);
 }
 
 int main() {
@@ -309,6 +353,7 @@ int main() {
     TestCodec();
     TestProjectAndClipboard();
     TestShapes();
+    TestFidelityTools();
 
     std::printf("pr_selftest: %d checks, %d FAIL\n", g_checks, g_fails);
     return g_fails == 0 ? 0 : 1;
