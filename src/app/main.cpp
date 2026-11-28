@@ -461,7 +461,7 @@ static void DrawCmdBtn(HDC hdc, const RECT& r, const char* icon, const wchar_t* 
     COLORREF bg = selected ? ui_theme::kBtnChecked
                            : (hovered && enabled ? ui_theme::kBtnHover : ui_theme::kSurface);
     COLORREF border = selected ? ui_theme::kBtnCheckedBorder
-                               : (hovered && enabled ? ui_theme::kDivider : bg);
+                               : (hovered && enabled ? ui_theme::kDivider : ui_theme::kCardBorder);
     HBRUSH br = CreateSolidBrush(bg);
     HPEN pen = CreatePen(PS_SOLID, 1, border);
     HGDIOBJ oldPen = SelectObject(hdc, pen);
@@ -1039,7 +1039,7 @@ void DrawStatus(HDC hdc) {
     const StatusGeom S = GetStatusGeom(client);
     auto drawSBtn = [&](const RECT& r, const char* icon, const wchar_t* fallback, bool hov) {
         if (hov) {
-            HBRUSH hb = CreateSolidBrush(ui_theme::kBtnHover);
+            HBRUSH hb = CreateSolidBrush(ui_theme::kStatusHover);
             HPEN hp = CreatePen(PS_SOLID, 1, ui_theme::kDivider);
             HGDIOBJ ohp = SelectObject(hdc, hp);
             HGDIOBJ ohb = SelectObject(hdc, hb);
@@ -1129,10 +1129,10 @@ void DrawRuler(HDC hdc, const RECT& canvas) {
     SelectObject(hdc, old);
     DeleteObject(border);
 
-    HPEN pen = CreatePen(PS_SOLID, 1, RGB(120, 120, 120));
+    HPEN pen = CreatePen(PS_SOLID, 1, ui_theme::kRulerTick);
     old = SelectObject(hdc, pen);
     SetBkMode(hdc, TRANSPARENT);
-    SetTextColor(hdc, RGB(90, 90, 90));
+    SetTextColor(hdc, ui_theme::kRulerText);
     const int step = (g.zoom >= 4) ? 10 : 20;
     for (int px = 0; px <= g.image->width(); px += step) {
         const int x = canvas.left + px * g.zoom;
@@ -1186,9 +1186,13 @@ void Paint(HWND hwnd) {
     const RECT canvas = CanvasRect();
     {
         const int cw = g.image->width() * g.zoom, ch = g.image->height() * g.zoom;
-        RECT shadow{canvas.left + 3, canvas.top + 3, canvas.left + cw + 3, canvas.top + ch + 3};
-        HBRUSH sh = CreateSolidBrush(RGB(210, 210, 210));
-        FillRect(mem, &shadow, sh);
+        RECT outer{canvas.left + 4, canvas.top + 4, canvas.left + cw + 4, canvas.top + ch + 4};
+        HBRUSH sh = CreateSolidBrush(ui_theme::kShadowLight);
+        FillRect(mem, &outer, sh);
+        DeleteObject(sh);
+        RECT inner{canvas.left + 2, canvas.top + 2, canvas.left + cw + 2, canvas.top + ch + 2};
+        sh = CreateSolidBrush(ui_theme::kShadowDark);
+        FillRect(mem, &inner, sh);
         DeleteObject(sh);
     }
     DrawCanvas(mem, canvas);

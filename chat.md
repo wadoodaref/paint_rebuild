@@ -946,3 +946,19 @@ completion statement). No application code changed.
 
 **Commit:** d58648f41fdfa351f74436b2535091598c897efe
 
+
+
+## 2026-11-28 - Session 58 - Windows-app style tokens from sibling project
+
+**Change:** studied `word_rebuild_v2/src/app/word_theme.h` (sibling Microsoft
+rebuild) and re-declared its measured Windows-app tokens in our own
+`src/app/ui_theme.h`: checked-button fill #CDE4FF, subtle card border #E1E1E1,
+status ink #242424 / hover #E1E1E1, ruler tick/text #808080/#5A5A5A, and a
+two-step #B4B4B4/#D2D2D2 canvas shadow. Applied them to command buttons, the
+ruler, status bar and canvas shadow while keeping Paint's SVG-derived accent.
+
+**Verification:** MSVC build 0 warnings/0 errors (both targets); `pr_selftest.exe`
+117 checks, 0 FAIL; GUI smoke launched `Untitled - PaintRebuild`.
+
+**Commit:** ea812e79ff976ebf796f109d4c7519d65cd3b471
+

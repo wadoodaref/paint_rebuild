@@ -229,3 +229,12 @@ SIZEALL cursor and committing one undoable `SnapshotOperation`; the source
 area is cleared to the background color and the Transparent selection toggle
 controls whether the selection's background is keyed out. Free-form selections
 are approximated by their bounding rectangle during the move.
+
+**Sibling style alignment (2026-11-28, Session 58):** measured Windows-app
+tokens from `E:\projects\word_rebuild_v2\src\app\word_theme.h` (owner
+permission, same family as Session 41) were re-declared in our own
+`src/app/ui_theme.h`: #CDE4FF checked button fill, #E1E1E1 card border,
+#242424 status ink, #E1E1E1 status hover, ruler tick #808080 / text #5A5A5A,
+and a two-step #B4B4B4/#D2D2D2 canvas shadow. Paint-specific SVG-extracted
+accent (#005FB8) and ink (#373737/#555555) are preserved. No sibling code,
+assets or licence/NOTICE files were copied or linked.
