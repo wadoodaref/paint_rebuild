@@ -904,3 +904,18 @@ command availability workflow rather than showing every command as enabled.
 
 **Commit:** b5e38051c9c692f6143f6f4ce217d2bee04236f0
 
+
+
+## 2026-11-28 - Session 55 - Drag-to-move active selection
+
+**Change:** pressing inside an existing selection with the Selection/Free-form
+Selection tool now drags that selection's pixels. The source rectangle is cleared
+to the background color, the Transparent selection state keys out the selection
+background, the selection rectangle follows the drag, and mouse-up commits a
+single undoable `SnapshotOperation` (`OperationKind::Selection`).
+
+**Verification:** MSVC build 0 warnings/0 errors (both targets); `pr_selftest.exe`
+117 checks, 0 FAIL; GUI smoke launched `Untitled - PaintRebuild`.
+
+**Commit:** 07d875f199dd1cc032a643f4fbea5bfc214c7f41
+

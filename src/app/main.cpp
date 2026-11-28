@@ -146,6 +146,16 @@ bool g_textUnderline = false;
 bool g_textStrikeOut = false;
 bool g_textOpaqueBackground = false;
 
+// Drag-inside-selection move state (Paint's move selection workflow).
+struct SelectionDragState {
+    bool active = false;
+    Rect src{};
+    Point start{};
+    std::unique_ptr<Image> original;
+    std::unique_ptr<Image> content;
+};
+SelectionDragState g_selDrag;
+
 pr::TextFormat CurrentTextFormat() {
     pr::TextFormat f;
     f.fontFamily = g_textFontFamily;
@@ -511,6 +521,29 @@ bool HasActiveSelection() {
     if (!g.tool) return false;
     const Rect r = g.tool->SelectionRect();
     return r.w > 0 && r.h > 0;
+}
+
+void SetSelectionRect(const Rect& rect) {
+    if (!g.tool) return;
+    const Point end{rect.x + std::max(0, rect.w - 1), rect.y + std::max(0, rect.h - 1)};
+    g.tool->OnStylusDown(Point{rect.x, rect.y});
+    g.tool->OnStylusMove(end);
+}
+
+void ApplySelectionDragPreview(int dx, int dy) {
+    if (!g_selDrag.original || !g_selDrag.content) return;
+    *g.image = *g_selDrag.original;
+    g.image->FillRect(g_selDrag.src, g.background);
+    g.image->Blit(*g_selDrag.content, Point{g_selDrag.src.x + dx, g_selDrag.src.y + dy},
+                  g_transparentSelection, g.background);
+    Rect moved = g_selDrag.src;
+    moved.x += dx;
+    moved.y += dy;
+    moved.x = std::max(0, std::min(moved.x, g.image->width() - 1));
+    moved.y = std::max(0, std::min(moved.y, g.image->height() - 1));
+    moved.w = std::min(moved.w, g.image->width() - moved.x);
+    moved.h = std::min(moved.h, g.image->height() - moved.y);
+    SetSelectionRect(moved);
 }
 
 CommandLayout BuildCommandLayout() {
@@ -1979,6 +2012,27 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam) 
             const pr::Point p = ToImagePoint(x, y);
             if (p.x < 0 || p.y < 0 || p.x >= g.image->width() || p.y >= g.image->height())
                 return 0;
+            if ((g.toolKind == PaintToolKind::Selection ||
+                 g.toolKind == PaintToolKind::FreeFormSelection) && HasActiveSelection()) {
+                const Rect sel = g.tool->SelectionRect();
+                if (Contains(sel, p)) {
+                    g_selDrag.active = true;
+                    g_selDrag.src = sel;
+                    g_selDrag.start = p;
+                    g_selDrag.original = std::make_unique<Image>(*g.image);
+                    g_selDrag.content = std::make_unique<Image>(Size{sel.w, sel.h});
+                    for (int sy = 0; sy < sel.h; ++sy) {
+                        for (int sx = 0; sx < sel.w; ++sx) {
+                            g_selDrag.content->SetPixel(
+                                Point{sx, sy}, g.image->GetPixel(Point{sel.x + sx, sel.y + sy}));
+                        }
+                    }
+                    g.drawing = true;
+                    SetCapture(hwnd);
+                    SetCursor(LoadCursor(nullptr, IDC_SIZEALL));
+                    return 0;
+                }
+            }
             if (g.toolKind == PaintToolKind::Text) {
                 FinishTextEditor(true);
                 const RECT canvas = CanvasRect();
@@ -2025,21 +2079,31 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam) 
             if (g_dragControl == 1) { ApplySizeSliderY(y); return 0; }
             if (g_dragControl == 2) { ApplyOpacitySliderY(y); return 0; }
             if (g_dragControl == 3) { ApplyZoomSliderX(x); return 0; }
+            if (g_selDrag.active) {
+                const pr::Point p = ToImagePoint(x, y);
+                ApplySelectionDragPreview(p.x - g_selDrag.start.x, p.y - g_selDrag.start.y);
+                InvalidateRect(hwnd, nullptr, FALSE);
+                return 0;
+            }
             if (g.drawing && g.resizeEdge != 0) {
                 SetCursor(LoadCursor(nullptr, g.resizeEdge == 1 ? IDC_SIZEWE : g.resizeEdge == 2 ? IDC_SIZENS : IDC_SIZENWSE));
                 return 0;
             }
             UpdateHover(x, y);
             const RECT canvas = CanvasRect();
+            const pr::Point p = ToImagePoint(x, y);
             const ResizeEdge hovEdge = CanvasResizeHit(x, y, canvas);
             if (hovEdge != ResizeEdge::None) {
                 SetCursor(LoadCursor(nullptr, hovEdge == ResizeEdge::Right ? IDC_SIZEWE : hovEdge == ResizeEdge::Bottom ? IDC_SIZENS : IDC_SIZENWSE));
+            } else if ((g.toolKind == PaintToolKind::Selection ||
+                        g.toolKind == PaintToolKind::FreeFormSelection) &&
+                       HasActiveSelection() && Contains(g.tool->SelectionRect(), p)) {
+                SetCursor(LoadCursor(nullptr, IDC_SIZEALL));
             } else if (HitRect(canvas, x, y)) {
                 SetCursor(LoadCursor(nullptr, g.toolKind == PaintToolKind::Text ? IDC_IBEAM : IDC_CROSS));
             } else {
                 SetCursor(LoadCursor(nullptr, IDC_ARROW));
             }
-            const pr::Point p = ToImagePoint(x, y);
             if (p.x != g.cursorX || p.y != g.cursorY) {
                 g.cursorX = p.x;
                 g.cursorY = p.y;
@@ -2078,6 +2142,28 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam) 
             if (g_dragControl != 0) {
                 g_dragControl = 0;
                 ReleaseCapture();
+                return 0;
+            }
+            if (g_selDrag.active) {
+                const pr::Point p = ToImagePoint(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
+                const int dx = p.x - g_selDrag.start.x;
+                const int dy = p.y - g_selDrag.start.y;
+                ApplySelectionDragPreview(dx, dy);
+                if (dx != 0 || dy != 0) {
+                    auto before = std::make_unique<Image>(*g_selDrag.original);
+                    auto after = std::make_unique<Image>(*g.image);
+                    g.stock.Commit(std::make_unique<SnapshotOperation>(
+                        OperationKind::Selection, std::move(before), std::move(after)));
+                    if (g.tool) g.tool->OnStylusUp(Point{g_selDrag.src.x + dx + g_selDrag.src.w - 1,
+                                                        g_selDrag.src.y + dy + g_selDrag.src.h - 1});
+                }
+                g_selDrag.active = false;
+                g_selDrag.original.reset();
+                g_selDrag.content.reset();
+                g.drawing = false;
+                ReleaseCapture();
+                SetTitle();
+                InvalidateRect(hwnd, nullptr, TRUE);
                 return 0;
             }
             if (g.drawing && g.resizeEdge != 0) {

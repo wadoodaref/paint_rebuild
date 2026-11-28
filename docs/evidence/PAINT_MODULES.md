@@ -222,3 +222,10 @@ toggle and a Done button. `TextFormat` carries these settings into both the
 in-place Edit control and the committed GDI rendering. Clean-room Win32
 reconstruction of the metadata-described text controls; exact Paint 11 font
 list and numeric IDs remain evidence unknowns.
+
+**Closed in Session 55:** dragging inside an active rectangular or free-form
+selection now moves its pixels (Paint's move-selection workflow), showing a
+SIZEALL cursor and committing one undoable `SnapshotOperation`; the source
+area is cleared to the background color and the Transparent selection toggle
+controls whether the selection's background is keyed out. Free-form selections
+are approximated by their bounding rectangle during the move.
