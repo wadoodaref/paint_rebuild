@@ -711,7 +711,7 @@ is the direct equivalent of the source command.
 **Verification:** MinGW-w64 build 0 warnings / 0 errors; `pr_selftest.exe` 117
 checks, 0 FAIL; GUI smoke launched and stayed alive.
 
-**Commit:** (pending)
+**Commit:** d78fe69
 
 ## 2026-11-28 - Log correction - commit hashes after --amend
 
