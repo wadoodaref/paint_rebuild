@@ -890,3 +890,17 @@ font, size, styles and background are committed to the image.
 
 **Commit:** 232796b67dc95c3c5c7f41a9f26398552ad9dc2e
 
+
+
+## 2026-11-28 - Session 54 - Contextual command enablement
+
+**Change:** Cut and Copy (Quick Actions command bar, Select dropdown and Edit
+menu) are now disabled/grayed when no selection is active; Crop follows the same
+state. Undo/Redo menu items reflect `CanUndo()`/`CanRedo()`. This matches Paint's
+command availability workflow rather than showing every command as enabled.
+
+**Verification:** MSVC build 0 warnings/0 errors (both targets); `pr_selftest.exe`
+117 checks, 0 FAIL; GUI smoke launched `Untitled - PaintRebuild`.
+
+**Commit:** b5e38051c9c692f6143f6f4ce217d2bee04236f0
+

@@ -507,9 +507,16 @@ static void DrawCmdBtn(HDC hdc, const RECT& r, const char* icon, const wchar_t* 
     }
 }
 
+bool HasActiveSelection() {
+    if (!g.tool) return false;
+    const Rect r = g.tool->SelectionRect();
+    return r.w > 0 && r.h > 0;
+}
+
 CommandLayout BuildCommandLayout() {
     CommandLayout L;
     const int top = CommandBarTop() + 4;
+    const bool hasSel = HasActiveSelection();
     int x = 8;
 
     auto addBtn = [&](int bx, int by, int bw, int bh, int cmd, const wchar_t* label,
@@ -531,8 +538,8 @@ CommandLayout BuildCommandLayout() {
     addBtn(x + 4, top + 4, 28, 34, 102, nullptr, "save.png", false, false, true);
     addBtn(x + 34, top + 4, 28, 34, 200, L"\u21B6", nullptr, false, false, g.stock.CanUndo());
     addBtn(x + 64, top + 4, 28, 34, 201, L"\u21B7", nullptr, false, false, g.stock.CanRedo());
-    addBtn(x + 4, top + 42, 28, 34, 202, nullptr, "office_cut.png", false, false, true);
-    addBtn(x + 34, top + 42, 28, 34, 203, nullptr, "office_copy.png", false, false, true);
+    addBtn(x + 4, top + 42, 28, 34, 202, nullptr, "office_cut.png", false, false, hasSel);
+    addBtn(x + 34, top + 42, 28, 34, 203, nullptr, "office_copy.png", false, false, hasSel);
     addBtn(x + 64, top + 42, 28, 34, 204, nullptr, "office_paste.png", false, false, true);
     x += 96;
     L.groups.push_back({L"Clipboard", qatLeft, x});
@@ -551,8 +558,6 @@ CommandLayout BuildCommandLayout() {
 
     // Image group
     const int imgLeft = x;
-    const Rect selRect = g.tool ? g.tool->SelectionRect() : Rect{};
-    const bool hasSel = (selRect.w > 0 && selRect.h > 0);
     addBtn(x + 4, top + 4, 48, 72, 407, L"Crop", "select.png", false, false, hasSel);
     addBtn(x + 56, top + 4, 72, 34, 9006, L"Rotate", "rotate.png", false, true);
     addBtn(x + 56, top + 42, 72, 34, 9005, L"Flip", "flip.png", false, true);
@@ -1489,8 +1494,10 @@ void DoCommand(WORD id) {
         AppendMenuW(m, MF_SEPARATOR, 0, nullptr);
         // REA: PaintUI.SelectionCommandBarViewModel exposes Cut/Copy/Paste,
         // SelectAll and ClearSelection commands (ev_ffbc7e54...).
-        AppendMenuW(m, MF_OWNERDRAW, 202, reinterpret_cast<LPCWSTR>(&kMenuCut));
-        AppendMenuW(m, MF_OWNERDRAW, 203, reinterpret_cast<LPCWSTR>(&kMenuCopy));
+        const int cutFlags = HasActiveSelection() ? MF_OWNERDRAW
+                                                  : (MF_OWNERDRAW | MF_DISABLED | MF_GRAYED);
+        AppendMenuW(m, cutFlags, 202, reinterpret_cast<LPCWSTR>(&kMenuCut));
+        AppendMenuW(m, cutFlags, 203, reinterpret_cast<LPCWSTR>(&kMenuCopy));
         AppendMenuW(m, MF_OWNERDRAW, 204, reinterpret_cast<LPCWSTR>(&kMenuPaste));
         AppendMenuW(m, MF_SEPARATOR, 0, nullptr);
         AppendMenuW(m, MF_STRING, 206, L"Select all\tCtrl+A");
@@ -1864,11 +1871,14 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam) 
             AppendMenuW(file, MF_SEPARATOR, 0, nullptr);
             AppendMenuW(file, MF_STRING, 104, L"E&xit");
             HMENU edit = CreatePopupMenu();
-            AppendMenuW(edit, MF_STRING, 200, L"&Undo\tCtrl+Z");
-            AppendMenuW(edit, MF_STRING, 201, L"&Redo\tCtrl+Y");
+            const int undoFlags = g.stock.CanUndo() ? MF_STRING : (MF_STRING | MF_DISABLED | MF_GRAYED);
+            const int redoFlags = g.stock.CanRedo() ? MF_STRING : (MF_STRING | MF_DISABLED | MF_GRAYED);
+            const int selFlags = HasActiveSelection() ? MF_STRING : (MF_STRING | MF_DISABLED | MF_GRAYED);
+            AppendMenuW(edit, undoFlags, 200, L"&Undo\tCtrl+Z");
+            AppendMenuW(edit, redoFlags, 201, L"&Redo\tCtrl+Y");
             AppendMenuW(edit, MF_SEPARATOR, 0, nullptr);
-            AppendMenuW(edit, MF_STRING, 202, L"Cu&t\tCtrl+X");
-            AppendMenuW(edit, MF_STRING, 203, L"&Copy\tCtrl+C");
+            AppendMenuW(edit, selFlags, 202, L"Cu&t\tCtrl+X");
+            AppendMenuW(edit, selFlags, 203, L"&Copy\tCtrl+C");
             AppendMenuW(edit, MF_STRING, 207, L"Copy &merged");
             AppendMenuW(edit, MF_STRING, 204, L"&Paste\tCtrl+V");
             AppendMenuW(edit, MF_STRING, 205, L"Clear &Image");
