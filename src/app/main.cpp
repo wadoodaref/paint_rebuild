@@ -1423,6 +1423,13 @@ void DoCommand(WORD id) {
             }
             break;
         }
+        case 207: {
+            // REA: ImageToolbarViewModel.CopyMerged — copy the whole flattened
+            // image, ignoring any active selection (our document is one layer).
+            const Rect all{0, 0, g.image->width(), g.image->height()};
+            if (!CopyImageToClipboard(g.hwnd, *g.image, all)) g.clipboard.Copy(*g.image, all);
+            break;
+        }
         case 204: {
             auto pasted = PasteImageFromClipboard();
             if (pasted) {
@@ -1567,6 +1574,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam) 
             AppendMenuW(edit, MF_SEPARATOR, 0, nullptr);
             AppendMenuW(edit, MF_STRING, 202, L"Cu&t\tCtrl+X");
             AppendMenuW(edit, MF_STRING, 203, L"&Copy\tCtrl+C");
+            AppendMenuW(edit, MF_STRING, 207, L"Copy &merged");
             AppendMenuW(edit, MF_STRING, 204, L"&Paste\tCtrl+V");
             AppendMenuW(edit, MF_STRING, 205, L"Clear &Image");
             AppendMenuW(edit, MF_STRING, 206, L"Select &All\tCtrl+A");

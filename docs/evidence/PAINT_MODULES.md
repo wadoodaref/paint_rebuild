@@ -188,6 +188,9 @@ commands were added to the Select dropdown.
 - Exact palette RGB literals remain unavailable from artifacts (previous
   unknown, unchanged).
 
+**Closed in Session 40:** `CopyMerged` is exposed as Edit > Copy merged and
+copies the whole image regardless of selection.
+
 **Closed in Session 39:** shape outline/fill brush styles. `ShapeBrushStyle`
 and deterministic coordinate-noise rendering implement None/Color/Crayon/
 Marker/Oil/NaturalPencil/Watercolour for both outline and interior, exposed in

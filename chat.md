@@ -698,6 +698,21 @@ checks, 0 FAIL; GUI smoke launched `PaintRebuild - Untitled` (`alive=True`).
 
 **Commit:** 5871bdf (after log-amend; pre-amend hash ddad7ca)
 
+## 2026-11-28 - Session 40 - Copy merged command from REA contract
+
+**Evidence:** `ev_ffbc7e541f699b0558b50d31a48024ae87108aa05b337c4e3939326cefa6a9e6`
+lists `ImageToolbarViewModel.CopyMerged`.
+
+**Change:** added Edit > Copy merged (command 207), which copies the whole
+flattened image to the system `CF_DIB` clipboard with the headless clipboard
+fallback, ignoring any active selection. Our document is single-layer, so this
+is the direct equivalent of the source command.
+
+**Verification:** MinGW-w64 build 0 warnings / 0 errors; `pr_selftest.exe` 117
+checks, 0 FAIL; GUI smoke launched and stayed alive.
+
+**Commit:** (pending)
+
 ## 2026-11-28 - Log correction - commit hashes after --amend
 
 The hashes recorded for Sessions 36-38 were corrected to the final pushed
