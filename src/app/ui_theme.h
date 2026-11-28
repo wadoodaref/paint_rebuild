@@ -1,8 +1,8 @@
-// Shared Microsoft/Fluent visual tokens, adapted with owner permission from
-// word_rebuild_v2/src/app/word_theme.h and ppt_rebuild/src/ui/ppt_theme.h.
-// The source values there were measured from installed Office 16 apps; they
-// are a closer basis than invented literals, but Paint 11's exact RGB values
-// are not present in the vendored REA artifacts and remain an unknown.
+// Paint 11 Light Theme tokens:
+// - Accent blue (#005FB8) and primary/secondary ink (#373737, #555555) are
+//   extracted directly from reference/paint-11.2609.441.0/ui-assets/*.svg.
+// - Surface/hover/divider neutrals (#F3F3F3, #E1DFDD, #DAD8D6) follow the
+//   shared Windows 11 / Fluent Light tokens.
 #pragma once
 
 #include <windows.h>
@@ -10,21 +10,21 @@
 namespace pr {
 namespace ui_theme {
 
-// Command/ribbon surfaces (#F3F2F1 family, shared by Word/PowerPoint shells).
-constexpr COLORREF kSurface          = RGB(243, 243, 243);
-constexpr COLORREF kDivider          = RGB(218, 216, 214);
-constexpr COLORREF kGroupText        = RGB(96, 94, 92);
-constexpr COLORREF kTextPrimary      = RGB(36, 36, 36);
+// Command/ribbon surfaces.
+constexpr COLORREF kSurface          = RGB(243, 243, 243);  // #F3F3F3
+constexpr COLORREF kDivider          = RGB(218, 216, 214);  // #DAD8D6
+constexpr COLORREF kGroupText        = RGB(85, 85, 85);     // #555555 (from Paint 11 SVGs)
+constexpr COLORREF kTextPrimary      = RGB(55, 55, 55);     // #373737 (from Paint 11 SVGs)
 constexpr COLORREF kBtnHover         = RGB(225, 223, 221);  // #E1DFDD
 constexpr COLORREF kBtnActive        = RGB(200, 198, 196);  // #C8C6C4
-constexpr COLORREF kBtnChecked       = RGB(205, 228, 255);  // #CDE4FF
-constexpr COLORREF kBtnCheckedBorder = RGB(96, 160, 240);   // #60A0F0
+constexpr COLORREF kBtnChecked       = RGB(218, 234, 250);  // soft tint of #005FB8
+constexpr COLORREF kBtnCheckedBorder = RGB(0, 95, 184);     // #005FB8 (from Paint 11 SVGs)
 constexpr COLORREF kDisabledText     = RGB(150, 150, 150);
 
 // Color swatch outlines and slider chrome.
 constexpr COLORREF kSwatchOutline    = RGB(180, 180, 180);
 constexpr COLORREF kSliderTrack      = RGB(205, 205, 205);
-constexpr COLORREF kSliderFill       = RGB(0, 120, 215);
+constexpr COLORREF kSliderFill       = RGB(0, 95, 184);     // #005FB8 (from Paint 11 SVGs)
 
 // Workspace and status bar.
 constexpr COLORREF kWorkspaceBg      = RGB(238, 238, 238);

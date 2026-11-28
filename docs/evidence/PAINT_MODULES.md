@@ -206,3 +206,9 @@ equivalent — "Custom rotate..." opens a signed-angle dialog with optional
 horizontal/vertical flips and commits one undoable `Image::Rotate` operation.
 No CIL body or numeric resource ID was inspected; the dialog is a clean-room
 Win32 reconstruction of the metadata-described contract, not a copied XAML UI.
+
+## Extracted Colors & Font Evidence (2026-11-28)
+- **SVG color literals** extracted from `reference/paint-11.2609.441.0/ui-assets/*.svg`:
+  - Accent blue: `#005FB8` (7 occurrences) / `#005FB7` (12 occurrences) -> applied as `ui_theme::kSliderFill` and `ui_theme::kBtnCheckedBorder` in `src/app/ui_theme.h`.
+  - Primary/secondary ink: `#373737` (3 occurrences) and `#555555` (1 occurrence) -> applied as `ui_theme::kTextPrimary` and `ui_theme::kGroupText`.
+- **Font family** extracted from `reference/paint-11.2609.441.0/mspaint.exe`: `Segoe UI` (used across `src/app/main.cpp`, `src/app/dialogs_win.cpp`, and `src/app/text_render.cpp`).

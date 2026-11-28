@@ -811,3 +811,15 @@ No source changes in this entry (self-referential; its own hash is in git log).
 - When `PaintToolKind::Zoom` is active, right-clicking to zoom out also calls `ClampScroll()`.
 
 **Verification:** MSVC build 0 warnings/0 errors (both targets); `pr_selftest.exe` 117 checks, 0 FAIL; GUI smoke launched `paintrebuild.exe` (`alive=True`).
+
+## 2026-11-28 — Session 48 — Paint 11 SVG-extracted colors and font evidence
+
+**Request:** "colors has to be exact, fonts and styles extracted also, u have all permissions proceed"
+
+**Evidence:** scanned the vendored Paint 11 assets in `reference/paint-11.2609.441.0/`:
+- `ui-assets/*.svg`: extracted exact hex colors `#005FB8` (7×) / `#005FB7` (12×) for Windows 11 Fluent Light Accent Blue, `#373737` (3×) for primary ink, and `#555555` (1×) for secondary ink.
+- `mspaint.exe`: confirmed `Segoe UI` font family string.
+
+**Change:** updated `src/app/ui_theme.h` to use the Paint 11 SVG-extracted `#005FB8` (`RGB(0, 95, 184)`) for `kSliderFill` and `kBtnCheckedBorder`, `#373737` (`RGB(55, 55, 55)`) for `kTextPrimary`, and `#555555` (`RGB(85, 85, 85)`) for `kGroupText` (replacing the Office 16 `#0078D7` / `#60A0F0` tokens). Recorded the extracted color and font evidence in `docs/evidence/PAINT_MODULES.md`.
+
+**Verification:** MSVC build 0 warnings/0 errors (both targets); `pr_selftest.exe` 117 checks, 0 FAIL; GUI smoke launched `paintrebuild.exe` (`alive=True`).
