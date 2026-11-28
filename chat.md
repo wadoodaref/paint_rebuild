@@ -742,7 +742,7 @@ pixel match.
 checks, 0 FAIL; GUI smoke plus screenshots confirm themed surfaces and the
 icon-bearing clipboard menu render correctly.
 
-**Commit:** (pending)
+**Commit:** fe93743
 
 ## 2026-11-28 - Log correction - commit hashes after --amend
 
