@@ -61,13 +61,16 @@ void Image::FillRect(const Rect& rect, Color c) {
     }
 }
 
-void Image::Blit(const Image& source, const Point& destination) {
+void Image::Blit(const Image& source, const Point& destination, bool transparent, Color key) {
     const Rect clip{0, 0, size_.w, size_.h};
+    const std::uint32_t keyRgb = key.argb & 0x00FFFFFFu;
     for (int y = 0; y < source.height(); ++y) {
         for (int x = 0; x < source.width(); ++x) {
             const Point to{destination.x + x, destination.y + y};
             if (!Contains(clip, to)) continue;
-            SetPixel(to, BlendOver(GetPixel(to), source.GetPixel(Point{x, y})));
+            const Color src = source.GetPixel(Point{x, y});
+            if (transparent && (src.argb & 0x00FFFFFFu) == keyRgb) continue;
+            SetPixel(to, BlendOver(GetPixel(to), src));
         }
     }
 }

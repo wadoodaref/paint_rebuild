@@ -124,6 +124,7 @@ struct AppState {
 AppState g;
 ShapeKind g_shapeKind = ShapeKind::Rectangle;
 bool g_shapeFilled = false;
+bool g_transparentSelection = false;
 ShapeBrushStyle g_outlineStyle = ShapeBrushStyle::Color;
 ShapeBrushStyle g_fillStyle = ShapeBrushStyle::Color;
 int g_resizeOrigW = 0, g_resizeOrigH = 0, g_resizeStartX = 0, g_resizeStartY = 0;
@@ -1422,6 +1423,8 @@ void DoCommand(WORD id) {
         AppendMenuW(m, MF_STRING | (g.toolKind == PaintToolKind::Selection ? MF_CHECKED : 0), 800, L"Rectangular selection");
         AppendMenuW(m, MF_STRING | (g.toolKind == PaintToolKind::FreeFormSelection ? MF_CHECKED : 0), 801, L"Free-form selection");
         AppendMenuW(m, MF_SEPARATOR, 0, nullptr);
+        AppendMenuW(m, MF_STRING | (g_transparentSelection ? MF_CHECKED : 0), 209, L"Transparent selection");
+        AppendMenuW(m, MF_SEPARATOR, 0, nullptr);
         // REA: PaintUI.SelectionCommandBarViewModel exposes Cut/Copy/Paste,
         // SelectAll and ClearSelection commands (ev_ffbc7e54...).
         AppendMenuW(m, MF_OWNERDRAW, 202, reinterpret_cast<LPCWSTR>(&kMenuCut));
@@ -1571,15 +1574,19 @@ void DoCommand(WORD id) {
                     const int nh = std::max(image.height(), pasted->height());
                     if (nw != image.width() || nh != image.height())
                         image.Resize(Size{nw, nh}, ResizeMode::Nearest, ResizeDirection::Both);
-                    image.Blit(*pasted, Point{0, 0});
+                    image.Blit(*pasted, Point{0, 0}, g_transparentSelection, g.background);
                 });
             } else if (g.clipboard.HasContent()) {
                 WholeImageOperation(OperationKind::FillRectangle, [&](Image& image) {
-                    g.clipboard.Paste(image, Point{0, 0});
+                    g.clipboard.Paste(image, Point{0, 0}, g_transparentSelection, g.background);
                 });
             }
             break;
         }
+        case 209:
+            g_transparentSelection = !g_transparentSelection;
+            InvalidateRect(g.hwnd, nullptr, TRUE);
+            break;
         case 205:
             WholeImageOperation(OperationKind::Clear, [&](Image& image) {
                 image.Clear(g.background);

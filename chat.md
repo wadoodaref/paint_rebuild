@@ -860,3 +860,18 @@ scrollbars when zoomed/canvas exceeds the viewport (Paint workflow fidelity).
 
 **Commit:** 2e7429c9e5dc54a0f7b6d57df91b13a589ea1d5f
 
+
+
+## 2026-11-28 - Session 52 - Transparent selection toggle and paste behavior
+
+**Change:** added a `Transparent selection` check-item to the Select dropdown
+(command 209). `Image::Blit` and `Clipboard::Paste` now accept optional
+`transparent`/`key` parameters; paste passes the current background color as the
+transparency key when the toggle is on, matching Paint's selection/paste
+workflow. Evidence note added to `docs/evidence/PAINT_MODULES.md`.
+
+**Verification:** MSVC build 0 warnings/0 errors (both targets); `pr_selftest.exe`
+117 checks, 0 FAIL; GUI smoke launched `Untitled - PaintRebuild`.
+
+**Commit:** c19e1fae3a92c4b7e0f64b5869160c67cd0e048c
+

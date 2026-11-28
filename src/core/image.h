@@ -39,7 +39,7 @@ public:
     void SetPixel(const Point& p, Color c);
     void Clear(Color background);
     void FillRect(const Rect& rect, Color c);
-    void Blit(const Image& source, const Point& destination);
+    void Blit(const Image& source, const Point& destination, bool transparent = false, Color key = Color{0});
 
     bool Crop(const Rect& rect);
     bool Resize(const Size& size, ResizeMode mode, ResizeDirection direction);

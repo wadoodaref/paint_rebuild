@@ -26,9 +26,9 @@ public:
         if (HasContent()) source.FillRect(rect_, background);
     }
 
-    bool Paste(Image& destination, const Point& at) const {
+    bool Paste(Image& destination, const Point& at, bool transparent = false, Color key = Color{0}) const {
         if (!content_) return false;
-        destination.Blit(*content_, at);
+        destination.Blit(*content_, at, transparent, key);
         return true;
     }
 

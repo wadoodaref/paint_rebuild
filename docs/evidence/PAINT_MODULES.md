@@ -212,3 +212,5 @@ Win32 reconstruction of the metadata-described contract, not a copied XAML UI.
   - Accent blue: `#005FB8` (7 occurrences) / `#005FB7` (12 occurrences) -> applied as `ui_theme::kSliderFill` and `ui_theme::kBtnCheckedBorder` in `src/app/ui_theme.h`.
   - Primary/secondary ink: `#373737` (3 occurrences) and `#555555` (1 occurrence) -> applied as `ui_theme::kTextPrimary` and `ui_theme::kGroupText`.
 - **Font family** extracted from `reference/paint-11.2609.441.0/mspaint.exe`: `Segoe UI` (used across `src/app/main.cpp`, `src/app/dialogs_win.cpp`, and `src/app/text_render.cpp`).
+
+**Closed in Session 52:** Selection dropdown now exposes a *Transparent selection* toggle (paint workflow behavior), and paste honors it by treating the current background color as transparent via `Image::Blit(..., transparent, key)` / `Clipboard::Paste(...)`. This is a clean-room reconstruction of standard Paint selection semantics, not a copied resource; exact numeric command IDs remain an evidence unknown.
