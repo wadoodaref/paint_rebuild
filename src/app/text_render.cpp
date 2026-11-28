@@ -47,10 +47,10 @@ Dib MakeDib(const Image& image) {
 }  // namespace
 
 bool RenderTextIntoImage(Image& image, const Point& at, const std::wstring& text,
-                         Color color, int fontHeightPx) {
+                         Color color, const TextFormat& format) {
     if (text.empty() || image.width() <= 0 || image.height() <= 0) return false;
     if (at.x < 0 || at.y < 0 || at.x >= image.width() || at.y >= image.height()) return false;
-    fontHeightPx = std::max(6, fontHeightPx);
+    const int fontHeightPx = std::max(6, format.heightPx);
 
     Dib dib = MakeDib(image);
     HDC screen = GetDC(nullptr);
@@ -67,12 +67,23 @@ bool RenderTextIntoImage(Image& image, const Point& at, const std::wstring& text
     const std::size_t pixelBytes = static_cast<std::size_t>(image.width()) * image.height() * 4u;
     std::memcpy(bits, dib.bytes.data() + sizeof(BITMAPINFOHEADER), pixelBytes);
 
-    HFONT font = CreateFontW(fontHeightPx, 0, 0, 0, FW_NORMAL, 0, 0, 0, DEFAULT_CHARSET,
-                             OUT_TT_PRECIS, CLIP_DEFAULT_PRECIS, ANTIALIASED_QUALITY,
-                             FF_DONTCARE, L"Segoe UI");
+    HFONT font = CreateFontW(fontHeightPx, 0, 0, 0,
+                             format.bold ? FW_BOLD : FW_NORMAL,
+                             format.italic ? TRUE : FALSE,
+                             format.underline ? TRUE : FALSE,
+                             format.strikeOut ? TRUE : FALSE,
+                             DEFAULT_CHARSET, OUT_TT_PRECIS, CLIP_DEFAULT_PRECIS,
+                             ANTIALIASED_QUALITY, FF_DONTCARE,
+                             format.fontFamily.empty() ? L"Segoe UI" : format.fontFamily.c_str());
     const HGDIOBJ oldFont = SelectObject(memory, font);
     SetTextColor(memory, RGB(Red(color), Green(color), Blue(color)));
-    SetBkMode(memory, TRANSPARENT);
+    if (format.opaqueBackground) {
+        SetBkMode(memory, OPAQUE);
+        SetBkColor(memory, RGB(Red(format.background), Green(format.background),
+                               Blue(format.background)));
+    } else {
+        SetBkMode(memory, TRANSPARENT);
+    }
     RECT rect{at.x, at.y, std::min(image.width(), at.x + 1024),
               std::min(image.height(), at.y + fontHeightPx * 8)};
     DrawTextW(memory, text.c_str(), static_cast<int>(text.size()), &rect,

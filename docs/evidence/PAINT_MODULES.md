@@ -214,3 +214,11 @@ Win32 reconstruction of the metadata-described contract, not a copied XAML UI.
 - **Font family** extracted from `reference/paint-11.2609.441.0/mspaint.exe`: `Segoe UI` (used across `src/app/main.cpp`, `src/app/dialogs_win.cpp`, and `src/app/text_render.cpp`).
 
 **Closed in Session 52:** Selection dropdown now exposes a *Transparent selection* toggle (paint workflow behavior), and paste honors it by treating the current background color as transparent via `Image::Blit(..., transparent, key)` / `Clipboard::Paste(...)`. This is a clean-room reconstruction of standard Paint selection semantics, not a copied resource; exact numeric command IDs remain an evidence unknown.
+
+**Closed in Session 53:** selecting the Text tool now swaps the contextual
+command bar to a Paint-style Text tab with font-family and size dropdowns,
+Bold/Italic/Underline/Strikethrough toggles, an Opaque/Clear background
+toggle and a Done button. `TextFormat` carries these settings into both the
+in-place Edit control and the committed GDI rendering. Clean-room Win32
+reconstruction of the metadata-described text controls; exact Paint 11 font
+list and numeric IDs remain evidence unknowns.

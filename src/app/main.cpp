@@ -11,6 +11,7 @@
 #include <algorithm>
 #include <array>
 #include <functional>
+#include <iterator>
 #include <memory>
 #include <string>
 #include <vector>
@@ -73,6 +74,7 @@ struct CommandLayout {
     std::vector<RECT> palette;
     RECT shapeGrid{};
     std::vector<CommandButton> shapeButtons;
+    RECT textToolbar{};
 };
 
 // Owner-drawn clipboard menu entries reuse generic Office icons from the
@@ -135,6 +137,43 @@ HWND g_textEdit = nullptr;
 HFONT g_textFont = nullptr;
 pr::Point g_textPos{};
 
+// Text command-bar state (font family, size, B/I/U/S, opaque background).
+std::wstring g_textFontFamily = L"Segoe UI";
+int g_textFontSizePx = 16;
+bool g_textBold = false;
+bool g_textItalic = false;
+bool g_textUnderline = false;
+bool g_textStrikeOut = false;
+bool g_textOpaqueBackground = false;
+
+pr::TextFormat CurrentTextFormat() {
+    pr::TextFormat f;
+    f.fontFamily = g_textFontFamily;
+    f.heightPx = std::max(8, g_textFontSizePx * g.zoom);
+    f.bold = g_textBold;
+    f.italic = g_textItalic;
+    f.underline = g_textUnderline;
+    f.strikeOut = g_textStrikeOut;
+    f.opaqueBackground = g_textOpaqueBackground;
+    f.background = g.background;
+    return f;
+}
+
+void ApplyTextFormatToEditor() {
+    if (!g_textEdit || !IsWindow(g_textEdit)) return;
+    if (g_textFont) DeleteObject(g_textFont);
+    g_textFont = CreateFontW(std::max(8, g_textFontSizePx * g.zoom), 0, 0, 0,
+                             g_textBold ? FW_BOLD : FW_NORMAL,
+                             g_textItalic ? TRUE : FALSE,
+                             g_textUnderline ? TRUE : FALSE,
+                             g_textStrikeOut ? TRUE : FALSE,
+                             DEFAULT_CHARSET, OUT_TT_PRECIS, CLIP_DEFAULT_PRECIS,
+                             ANTIALIASED_QUALITY, FF_DONTCARE, g_textFontFamily.c_str());
+    SendMessageW(g_textEdit, WM_SETFONT, reinterpret_cast<WPARAM>(g_textFont), TRUE);
+    InvalidateRect(g_textEdit, nullptr, TRUE);
+    SetFocus(g_textEdit);
+}
+
 void FinishTextEditor(bool commit) {
     HWND editor = g_textEdit;
     g_textEdit = nullptr;  // guard against re-entrant EN_KILLFOCUS
@@ -146,10 +185,10 @@ void FinishTextEditor(bool commit) {
             GetWindowTextW(editor, text.data(), static_cast<int>(text.size()) + 1);
         if (!text.empty()) {
             const pr::Point at = g_textPos;
-            const int height = std::max(8, 16 * g.zoom);
             const pr::Color color = g.foreground;
+            const pr::TextFormat format = CurrentTextFormat();
             WholeImageOperation(OperationKind::Text, [&](Image& image) {
-                RenderTextIntoImage(image, at, text, color, height);
+                RenderTextIntoImage(image, at, text, color, format);
             });
         }
     }
@@ -535,85 +574,108 @@ CommandLayout BuildCommandLayout() {
     L.groups.push_back({L"Tools", toolsLeft, x});
     x += 6;
 
-    // Brushes group
-    const int brushLeft = x;
-    const bool brushActive = (g.toolKind == PaintToolKind::Brush ||
-                              g.toolKind == PaintToolKind::Airbrush ||
-                              g.toolKind == PaintToolKind::Calligraphic ||
-                              g.toolKind == PaintToolKind::OilBrush ||
-                              g.toolKind == PaintToolKind::Watercolor ||
-                              g.toolKind == PaintToolKind::Marker ||
-                              g.toolKind == PaintToolKind::Crayon ||
-                              g.toolKind == PaintToolKind::NaturalPencil);
-    const char* brushIcon = (g.toolKind == PaintToolKind::Airbrush) ? "airbrush.png"
-                          : (g.toolKind == PaintToolKind::Calligraphic) ? "calligraphy.png"
-                          : "brush.png";
-    addBtn(x + 6, top + 4, 76, 72, 807, L"Brushes", brushIcon, brushActive, true);
-    x += 84;
-    L.groups.push_back({L"Brushes", brushLeft, x});
-    x += 6;
+    if (g.toolKind == PaintToolKind::Text) {
+        // Paint shows a contextual Text tab in place of Brushes/Shapes/Size.
+        const int textLeft = x;
+        L.textToolbar = RECT{x + 2, top + 2, x + 306, top + 82};
+        static std::wstring familyLabel;
+        familyLabel = g_textFontFamily;
+        if (familyLabel.size() > 14) familyLabel = familyLabel.substr(0, 14);
+        static std::wstring sizeLabel;
+        sizeLabel = std::to_wstring(g_textFontSizePx) + L"px";
+        addBtn(x + 4, top + 4, 100, 24, 9300, familyLabel.c_str(), nullptr, false, true);
+        addBtn(x + 108, top + 4, 66, 24, 9310, sizeLabel.c_str(), nullptr, false, true);
+        addBtn(x + 4, top + 32, 28, 24, 9320, L"B", nullptr, g_textBold);
+        addBtn(x + 34, top + 32, 28, 24, 9321, L"I", nullptr, g_textItalic);
+        addBtn(x + 64, top + 32, 28, 24, 9322, L"U", nullptr, g_textUnderline);
+        addBtn(x + 94, top + 32, 28, 24, 9323, L"S", nullptr, g_textStrikeOut);
+        addBtn(x + 126, top + 32, 80, 24, 9324,
+               g_textOpaqueBackground ? L"Opaque" : L"Clear", nullptr, g_textOpaqueBackground);
+        addBtn(x + 210, top + 32, 84, 24, 9325, L"Done", nullptr);
+        x += 306;
+        L.groups.push_back({L"Text", textLeft, x});
+        x += 6;
+    } else {
+        // Brushes group
+        const int brushLeft = x;
+        const bool brushActive = (g.toolKind == PaintToolKind::Brush ||
+                                  g.toolKind == PaintToolKind::Airbrush ||
+                                  g.toolKind == PaintToolKind::Calligraphic ||
+                                  g.toolKind == PaintToolKind::OilBrush ||
+                                  g.toolKind == PaintToolKind::Watercolor ||
+                                  g.toolKind == PaintToolKind::Marker ||
+                                  g.toolKind == PaintToolKind::Crayon ||
+                                  g.toolKind == PaintToolKind::NaturalPencil);
+        const char* brushIcon = (g.toolKind == PaintToolKind::Airbrush) ? "airbrush.png"
+                              : (g.toolKind == PaintToolKind::Calligraphic) ? "calligraphy.png"
+                              : "brush.png";
+        addBtn(x + 6, top + 4, 76, 72, 807, L"Brushes", brushIcon, brushActive, true);
+        x += 84;
+        L.groups.push_back({L"Brushes", brushLeft, x});
+        x += 6;
 
-    // Shapes group (8 cols x 3 rows = 24 slots for 23 shapes; fits cleanly above label)
-    const int shapesLeft = x;
-    L.shapeGrid = RECT{x + 4, top + 4, x + 188, top + 79};
-    static const struct { const char* icon; ShapeKind shape; int cmd; } shapeDefs[] = {
-        {"line.png", ShapeKind::Rectangle, 811}, {"curve.png", ShapeKind::Rectangle, 812},
-        {"oval.png", ShapeKind::Ellipse, 815}, {"rectangle.png", ShapeKind::Rectangle, 814},
-        {"rounded_rect.png", ShapeKind::RoundedRectangle, 816}, {"polygon.png", ShapeKind::Rectangle, 813},
-        {"triangle.png", ShapeKind::Triangle, 600 + (int)ShapeKind::Triangle},
-        {"right_triangle.png", ShapeKind::RightTriangle, 600 + (int)ShapeKind::RightTriangle},
-        {"diamond.png", ShapeKind::Diamond, 600 + (int)ShapeKind::Diamond},
-        {"pentagon.png", ShapeKind::Pentagon, 600 + (int)ShapeKind::Pentagon},
-        {"hexagon.png", ShapeKind::Hexagon, 600 + (int)ShapeKind::Hexagon},
-        {"right_arrow.png", ShapeKind::RightArrow, 600 + (int)ShapeKind::RightArrow},
-        {"left_arrow.png", ShapeKind::LeftArrow, 600 + (int)ShapeKind::LeftArrow},
-        {"up_arrow.png", ShapeKind::UpArrow, 600 + (int)ShapeKind::UpArrow},
-        {"down_arrow.png", ShapeKind::DownArrow, 600 + (int)ShapeKind::DownArrow},
-        {"four_point_star.png", ShapeKind::FourPointedStar, 600 + (int)ShapeKind::FourPointedStar},
-        {"five_point_star.png", ShapeKind::FivePointedStar, 600 + (int)ShapeKind::FivePointedStar},
-        {"six_point_star.png", ShapeKind::SixPointedStar, 600 + (int)ShapeKind::SixPointedStar},
-        {"rounded_rect_callout.png", ShapeKind::RoundedRectangularCallout, 600 + (int)ShapeKind::RoundedRectangularCallout},
-        {"oval_callout.png", ShapeKind::OvalCallout, 600 + (int)ShapeKind::OvalCallout},
-        {"cloud_callout.png", ShapeKind::CloudCallout, 600 + (int)ShapeKind::CloudCallout},
-        {"heart.png", ShapeKind::Heart, 600 + (int)ShapeKind::Heart},
-        {"lightning.png", ShapeKind::Lightning, 600 + (int)ShapeKind::Lightning},
-    };
-    for (int i = 0; i < 23; ++i) {
-        const int col = i % 8;
-        const int row = i / 8;
-        CommandButton sb;
-        sb.rect = RECT{L.shapeGrid.left + col * 23, L.shapeGrid.top + row * 25,
-                       L.shapeGrid.left + col * 23 + 21, L.shapeGrid.top + row * 25 + 23};
-        sb.command = shapeDefs[i].cmd;
-        sb.icon = shapeDefs[i].icon;
-        if (sb.command == 811) sb.toggle = (g.toolKind == PaintToolKind::Line);
-        else if (sb.command == 812) sb.toggle = (g.toolKind == PaintToolKind::Curve);
-        else if (sb.command == 813) sb.toggle = (g.toolKind == PaintToolKind::Polygon);
-        else if (sb.command == 814) sb.toggle = (g.toolKind == PaintToolKind::Rectangle);
-        else if (sb.command == 815) sb.toggle = (g.toolKind == PaintToolKind::Ellipse);
-        else if (sb.command == 816) sb.toggle = (g.toolKind == PaintToolKind::RoundedRectangle);
-        else sb.toggle = (g.toolKind == PaintToolKind::AutoShape && g_shapeKind == shapeDefs[i].shape);
-        L.shapeButtons.push_back(sb);
+        // Shapes group (8 cols x 3 rows = 24 slots for 23 shapes)
+        const int shapesLeft = x;
+        L.shapeGrid = RECT{x + 4, top + 4, x + 188, top + 79};
+        static const struct { const char* icon; ShapeKind shape; int cmd; } shapeDefs[] = {
+            {"line.png", ShapeKind::Rectangle, 811}, {"curve.png", ShapeKind::Rectangle, 812},
+            {"oval.png", ShapeKind::Ellipse, 815}, {"rectangle.png", ShapeKind::Rectangle, 814},
+            {"rounded_rect.png", ShapeKind::RoundedRectangle, 816}, {"polygon.png", ShapeKind::Rectangle, 813},
+            {"triangle.png", ShapeKind::Triangle, 600 + (int)ShapeKind::Triangle},
+            {"right_triangle.png", ShapeKind::RightTriangle, 600 + (int)ShapeKind::RightTriangle},
+            {"diamond.png", ShapeKind::Diamond, 600 + (int)ShapeKind::Diamond},
+            {"pentagon.png", ShapeKind::Pentagon, 600 + (int)ShapeKind::Pentagon},
+            {"hexagon.png", ShapeKind::Hexagon, 600 + (int)ShapeKind::Hexagon},
+            {"right_arrow.png", ShapeKind::RightArrow, 600 + (int)ShapeKind::RightArrow},
+            {"left_arrow.png", ShapeKind::LeftArrow, 600 + (int)ShapeKind::LeftArrow},
+            {"up_arrow.png", ShapeKind::UpArrow, 600 + (int)ShapeKind::UpArrow},
+            {"down_arrow.png", ShapeKind::DownArrow, 600 + (int)ShapeKind::DownArrow},
+            {"four_point_star.png", ShapeKind::FourPointedStar, 600 + (int)ShapeKind::FourPointedStar},
+            {"five_point_star.png", ShapeKind::FivePointedStar, 600 + (int)ShapeKind::FivePointedStar},
+            {"six_point_star.png", ShapeKind::SixPointedStar, 600 + (int)ShapeKind::SixPointedStar},
+            {"rounded_rect_callout.png", ShapeKind::RoundedRectangularCallout, 600 + (int)ShapeKind::RoundedRectangularCallout},
+            {"oval_callout.png", ShapeKind::OvalCallout, 600 + (int)ShapeKind::OvalCallout},
+            {"cloud_callout.png", ShapeKind::CloudCallout, 600 + (int)ShapeKind::CloudCallout},
+            {"heart.png", ShapeKind::Heart, 600 + (int)ShapeKind::Heart},
+            {"lightning.png", ShapeKind::Lightning, 600 + (int)ShapeKind::Lightning},
+        };
+        for (int i = 0; i < 23; ++i) {
+            const int col = i % 8;
+            const int row = i / 8;
+            CommandButton sb;
+            sb.rect = RECT{L.shapeGrid.left + col * 23, L.shapeGrid.top + row * 25,
+                           L.shapeGrid.left + col * 23 + 21, L.shapeGrid.top + row * 25 + 23};
+            sb.command = shapeDefs[i].cmd;
+            sb.icon = shapeDefs[i].icon;
+            if (sb.command == 811) sb.toggle = (g.toolKind == PaintToolKind::Line);
+            else if (sb.command == 812) sb.toggle = (g.toolKind == PaintToolKind::Curve);
+            else if (sb.command == 813) sb.toggle = (g.toolKind == PaintToolKind::Polygon);
+            else if (sb.command == 814) sb.toggle = (g.toolKind == PaintToolKind::Rectangle);
+            else if (sb.command == 815) sb.toggle = (g.toolKind == PaintToolKind::Ellipse);
+            else if (sb.command == 816) sb.toggle = (g.toolKind == PaintToolKind::RoundedRectangle);
+            else sb.toggle = (g.toolKind == PaintToolKind::AutoShape && g_shapeKind == shapeDefs[i].shape);
+            L.shapeButtons.push_back(sb);
+        }
+        x += 192;
+        int outlineThickness = 1;
+        g.attributes.GetValue(1, outlineThickness);
+        addBtn(x + 2, top + 4, 72, 34, 9001, L"Outline",
+               outlineThickness > 0 ? "shape_outline.png" : "shape_nofill.png",
+               outlineThickness > 0, true);
+        addBtn(x + 2, top + 42, 72, 34, 9002, L"Fill",
+               g_shapeFilled ? "shape_fill.png" : "shape_nofill.png",
+               g_shapeFilled, true);
+        x += 78;
+        L.groups.push_back({L"Shapes", shapesLeft, x});
+        x += 6;
+
+        // Size group
+        const int sizeLeft = x;
+        addBtn(x + 4, top + 4, 48, 72, 9003, L"Size", "size.png", false, true);
+        x += 56;
+        L.groups.push_back({L"Size", sizeLeft, x});
+        x += 6;
     }
-    x += 192;
-    int outlineThickness = 1;
-    g.attributes.GetValue(1, outlineThickness);
-    addBtn(x + 2, top + 4, 72, 34, 9001, L"Outline",
-           outlineThickness > 0 ? "shape_outline.png" : "shape_nofill.png",
-           outlineThickness > 0, true);
-    addBtn(x + 2, top + 42, 72, 34, 9002, L"Fill",
-           g_shapeFilled ? "shape_fill.png" : "shape_nofill.png",
-           g_shapeFilled, true);
-    x += 78;
-    L.groups.push_back({L"Shapes", shapesLeft, x});
-    x += 6;
-
-    // Size group
-    const int sizeLeft = x;
-    addBtn(x + 4, top + 4, 48, 72, 9003, L"Size", "size.png", false, true);
-    x += 56;
-    L.groups.push_back({L"Size", sizeLeft, x});
-    x += 6;
 
     // Colors group
     const int colorsLeft = x;
@@ -668,7 +730,7 @@ void DrawCommandBar(HDC hdc) {
         const bool hovered = (g_hoverCmd == b.command && b.command != 0);
         if (b.icon == nullptr && b.label != nullptr) {
             // Glyph-only button (e.g. Undo / Redo)
-            DrawCmdBtn(hdc, b.rect, nullptr, nullptr, b.toggle, hovered, true, false, b.enabled);
+            DrawCmdBtn(hdc, b.rect, nullptr, nullptr, b.toggle, hovered, true, b.dropdown, b.enabled);
             SetBkMode(hdc, TRANSPARENT);
             SetTextColor(hdc, b.enabled ? ui_theme::kTextPrimary : ui_theme::kDisabledText);
             RECT tr = b.rect;
@@ -1439,6 +1501,44 @@ void DoCommand(WORD id) {
         if (sel) DoCommand(static_cast<WORD>(sel));
         return;
     }
+    if (id == 9300) {
+        static const wchar_t* fonts[] = {
+            L"Segoe UI", L"Arial", L"Calibri", L"Consolas", L"Times New Roman",
+            L"Georgia", L"Tahoma", L"Verdana", L"Courier New", L"Comic Sans MS"};
+        HMENU m = CreatePopupMenu();
+        for (int i = 0; i < static_cast<int>(std::size(fonts)); ++i)
+            AppendMenuW(m, MF_STRING | (g_textFontFamily == fonts[i] ? MF_CHECKED : 0),
+                        9400 + i, fonts[i]);
+        POINT pt; GetCursorPos(&pt);
+        int sel = TrackPopupMenuEx(m, TPM_RETURNCMD | TPM_LEFTALIGN | TPM_TOPALIGN,
+                                   pt.x, pt.y, g.hwnd, nullptr);
+        DestroyMenu(m);
+        if (sel >= 9400 && sel < 9400 + static_cast<int>(std::size(fonts))) {
+            g_textFontFamily = fonts[sel - 9400];
+            ApplyTextFormatToEditor();
+            InvalidateRect(g.hwnd, nullptr, TRUE);
+        }
+        return;
+    }
+    if (id == 9310) {
+        static const int sizes[] = {8, 10, 12, 14, 16, 18, 20, 24, 28, 32, 36, 48, 72};
+        HMENU m = CreatePopupMenu();
+        for (int i = 0; i < static_cast<int>(std::size(sizes)); ++i) {
+            const std::wstring label = std::to_wstring(sizes[i]) + L"px";
+            AppendMenuW(m, MF_STRING | (g_textFontSizePx == sizes[i] ? MF_CHECKED : 0),
+                        9450 + i, label.c_str());
+        }
+        POINT pt; GetCursorPos(&pt);
+        int sel = TrackPopupMenuEx(m, TPM_RETURNCMD | TPM_LEFTALIGN | TPM_TOPALIGN,
+                                   pt.x, pt.y, g.hwnd, nullptr);
+        DestroyMenu(m);
+        if (sel >= 9450 && sel < 9450 + static_cast<int>(std::size(sizes))) {
+            g_textFontSizePx = sizes[sel - 9450];
+            ApplyTextFormatToEditor();
+            InvalidateRect(g.hwnd, nullptr, TRUE);
+        }
+        return;
+    }
     if (id == 9005) {
         HMENU m = CreatePopupMenu();
         AppendMenuW(m, MF_STRING, 401, L"Flip horizontal");
@@ -1585,6 +1685,26 @@ void DoCommand(WORD id) {
         }
         case 209:
             g_transparentSelection = !g_transparentSelection;
+            InvalidateRect(g.hwnd, nullptr, TRUE);
+            break;
+        case 9320:
+            g_textBold = !g_textBold; ApplyTextFormatToEditor();
+            InvalidateRect(g.hwnd, nullptr, TRUE); break;
+        case 9321:
+            g_textItalic = !g_textItalic; ApplyTextFormatToEditor();
+            InvalidateRect(g.hwnd, nullptr, TRUE); break;
+        case 9322:
+            g_textUnderline = !g_textUnderline; ApplyTextFormatToEditor();
+            InvalidateRect(g.hwnd, nullptr, TRUE); break;
+        case 9323:
+            g_textStrikeOut = !g_textStrikeOut; ApplyTextFormatToEditor();
+            InvalidateRect(g.hwnd, nullptr, TRUE); break;
+        case 9324:
+            g_textOpaqueBackground = !g_textOpaqueBackground;
+            InvalidateRect(g.hwnd, nullptr, TRUE); break;
+        case 9325:
+            FinishTextEditor(true);
+            SetFocus(g.hwnd);
             InvalidateRect(g.hwnd, nullptr, TRUE);
             break;
         case 205:
@@ -1863,9 +1983,13 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam) 
                     0, L"Edit", L"",
                     WS_CHILD | WS_VISIBLE | ES_MULTILINE | ES_WANTRETURN | WS_BORDER | WS_TABSTOP,
                     px, py, width, height, hwnd, reinterpret_cast<HMENU>(600), nullptr, nullptr);
-                g_textFont = CreateFontW(16 * g.zoom, 0, 0, 0, FW_NORMAL, 0, 0, 0,
+                g_textFont = CreateFontW(std::max(8, g_textFontSizePx * g.zoom), 0, 0, 0,
+                                         g_textBold ? FW_BOLD : FW_NORMAL,
+                                         g_textItalic ? TRUE : FALSE,
+                                         g_textUnderline ? TRUE : FALSE,
+                                         g_textStrikeOut ? TRUE : FALSE,
                                          DEFAULT_CHARSET, OUT_TT_PRECIS, CLIP_DEFAULT_PRECIS,
-                                         ANTIALIASED_QUALITY, FF_DONTCARE, L"Segoe UI");
+                                         ANTIALIASED_QUALITY, FF_DONTCARE, g_textFontFamily.c_str());
                 SendMessageW(g_textEdit, WM_SETFONT, reinterpret_cast<WPARAM>(g_textFont), TRUE);
                 SetFocus(g_textEdit);
                 return 0;

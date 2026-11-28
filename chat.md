@@ -875,3 +875,18 @@ workflow. Evidence note added to `docs/evidence/PAINT_MODULES.md`.
 
 **Commit:** c19e1fae3a92c4b7e0f64b5869160c67cd0e048c
 
+
+
+## 2026-11-28 - Session 53 - Contextual Text command bar and text formatting
+
+**Change:** when the Text tool is active, the command bar now shows a Paint-style
+Text tab (font family, size, Bold/Italic/Underline/Strikethrough, Opaque/Clear
+background, Done) instead of Brushes/Shapes/Size. `TextFormat` passes all of
+these settings to the in-place Edit control and to `RenderTextIntoImage`, so
+font, size, styles and background are committed to the image.
+
+**Verification:** MSVC build 0 warnings/0 errors (both targets); `pr_selftest.exe`
+117 checks, 0 FAIL; GUI smoke launched `Untitled - PaintRebuild`.
+
+**Commit:** 232796b67dc95c3c5c7f41a9f26398552ad9dc2e
+
