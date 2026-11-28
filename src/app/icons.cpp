@@ -2,6 +2,7 @@
 #include <windows.h>
 
 #include <algorithm>
+#include <cstring>
 #include <memory>
 #include <string>
 #include <unordered_map>
@@ -21,7 +22,17 @@ std::wstring AssetDirectory() {
     std::wstring exe(path);
     const std::size_t slash = exe.find_last_of(L"\\/");
     if (slash == std::wstring::npos) return std::wstring();
-    return exe.substr(0, slash) + L"\\assets\\icons";
+    const std::wstring exeDir = exe.substr(0, slash);
+    const std::wstring local = exeDir + L"\\assets\\icons";
+    if (GetFileAttributesW(local.c_str()) != INVALID_FILE_ATTRIBUTES) return local;
+    // Running from build\ (the canonical run.ps1 path) keeps assets at the
+    // repository root. Fall back one directory up so icons still load.
+    const std::size_t parent = exeDir.find_last_of(L"\\/");
+    if (parent != std::wstring::npos) {
+        const std::wstring above = exeDir.substr(0, parent) + L"\\assets\\icons";
+        if (GetFileAttributesW(above.c_str()) != INVALID_FILE_ATTRIBUTES) return above;
+    }
+    return local;
 }
 
 void PremultiplyAlpha(Image& img) {
@@ -74,7 +85,7 @@ void DrawToolIcon(HDC hdc, const Image& icon, int x, int y, int size) {
     HBITMAP dib = CreateDIBSection(mem, &info, DIB_RGB_COLORS, &bits, nullptr, 0);
     if (!dib || !bits) { if (dib) DeleteObject(dib); DeleteDC(mem); return; }
     const std::size_t bytes = static_cast<std::size_t>(icon.width()) * icon.height() * 4;
-    std::copy(icon.Bitmap(), icon.Bitmap() + bytes, static_cast<uint8_t*>(bits));
+    std::memcpy(bits, icon.Bitmap(), bytes);
     HGDIOBJ old = SelectObject(mem, dib);
     BLENDFUNCTION bf{AC_SRC_OVER, 0, 255, AC_SRC_ALPHA};
     AlphaBlend(hdc, x, y, size, size, mem, 0, 0, icon.width(), icon.height(), bf);

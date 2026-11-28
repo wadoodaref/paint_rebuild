@@ -394,7 +394,7 @@ static void DrawCmdBtn(HDC hdc, const RECT& r, const char* icon, const wchar_t* 
         SetBkMode(hdc, TRANSPARENT);
         SetTextColor(hdc, enabled ? RGB(32, 32, 32) : RGB(150, 150, 150));
         if (compactHoriz) {
-            RECT tr{r.left + 25, r.top, r.right - (dropdown ? 12 : 4), r.bottom};
+            RECT tr{r.left + 20, r.top, r.right - (dropdown ? 7 : 4), r.bottom};
             DrawTextW(hdc, label, -1, &tr, DT_LEFT | DT_SINGLELINE | DT_VCENTER);
         } else {
             RECT tr{r.left + 2, r.top + 38, r.right - 2, r.bottom - 4};
@@ -452,10 +452,10 @@ CommandLayout BuildCommandLayout() {
     const Rect selRect = g.tool ? g.tool->SelectionRect() : Rect{};
     const bool hasSel = (selRect.w > 0 && selRect.h > 0);
     addBtn(x + 4, top + 4, 48, 72, 407, L"Crop", "select.png", false, false, hasSel);
-    addBtn(x + 56, top + 4, 62, 34, 9006, L"Rotate", "rotate.png", false, true);
-    addBtn(x + 56, top + 42, 62, 34, 9005, L"Flip", "flip.png", false, true);
-    addBtn(x + 122, top + 4, 52, 72, 405, L"Resize", "resize.png", false, false);
-    x += 180;
+    addBtn(x + 56, top + 4, 72, 34, 9006, L"Rotate", "rotate.png", false, true);
+    addBtn(x + 56, top + 42, 72, 34, 9005, L"Flip", "flip.png", false, true);
+    addBtn(x + 134, top + 4, 52, 72, 405, L"Resize", "resize.png", false, false);
+    x += 192;
     L.groups.push_back({L"Image", imgLeft, x});
     x += 6;
 
@@ -482,14 +482,14 @@ CommandLayout BuildCommandLayout() {
                               g.toolKind == PaintToolKind::Marker ||
                               g.toolKind == PaintToolKind::Crayon ||
                               g.toolKind == PaintToolKind::NaturalPencil);
-    addBtn(x + 6, top + 4, 58, 72, 807, L"Brushes", "brush.png", brushActive, true);
-    x += 70;
+    addBtn(x + 6, top + 4, 76, 72, 807, L"Brushes", "brush.png", brushActive, true);
+    x += 84;
     L.groups.push_back({L"Brushes", brushLeft, x});
     x += 6;
 
     // Shapes group (8 cols x 3 rows = 24 slots for 23 shapes; fits cleanly above label)
     const int shapesLeft = x;
-    L.shapeGrid = RECT{x + 4, top + 4, x + 212, top + 79};
+    L.shapeGrid = RECT{x + 4, top + 4, x + 188, top + 79};
     static const struct { const char* icon; ShapeKind shape; int cmd; } shapeDefs[] = {
         {"line.png", ShapeKind::Rectangle, 811}, {"curve.png", ShapeKind::Rectangle, 812},
         {"oval.png", ShapeKind::Ellipse, 815}, {"rectangle.png", ShapeKind::Rectangle, 814},
@@ -516,8 +516,8 @@ CommandLayout BuildCommandLayout() {
         const int col = i % 8;
         const int row = i / 8;
         CommandButton sb;
-        sb.rect = RECT{L.shapeGrid.left + col * 26, L.shapeGrid.top + row * 25,
-                       L.shapeGrid.left + col * 26 + 24, L.shapeGrid.top + row * 25 + 23};
+        sb.rect = RECT{L.shapeGrid.left + col * 23, L.shapeGrid.top + row * 25,
+                       L.shapeGrid.left + col * 23 + 21, L.shapeGrid.top + row * 25 + 23};
         sb.command = shapeDefs[i].cmd;
         sb.icon = shapeDefs[i].icon;
         if (sb.command == 811) sb.toggle = (g.toolKind == PaintToolKind::Line);
@@ -529,10 +529,12 @@ CommandLayout BuildCommandLayout() {
         else sb.toggle = (g.toolKind == PaintToolKind::AutoShape && g_shapeKind == shapeDefs[i].shape);
         L.shapeButtons.push_back(sb);
     }
-    x += 216;
-    addBtn(x + 2, top + 4, 68, 34, 9001, L"Outline", "shape_outline.png", !g_shapeFilled, true);
-    addBtn(x + 2, top + 42, 68, 34, 9002, L"Fill", "shape_fill.png", g_shapeFilled, true);
-    x += 74;
+    x += 192;
+    int outlineThickness = 1;
+    g.attributes.GetValue(1, outlineThickness);
+    addBtn(x + 2, top + 4, 72, 34, 9001, L"Outline", "shape_outline.png", outlineThickness > 0, true);
+    addBtn(x + 2, top + 42, 72, 34, 9002, L"Fill", "shape_fill.png", g_shapeFilled, true);
+    x += 78;
     L.groups.push_back({L"Shapes", shapesLeft, x});
     x += 6;
 
@@ -550,11 +552,11 @@ CommandLayout BuildCommandLayout() {
     for (int i = 0; i < 20; ++i) {
         const int col = i % 10;
         const int row = i / 10;
-        L.palette.push_back(RECT{x + 108 + col * 24, top + 12 + row * 28,
-                                 x + 108 + col * 24 + 20, top + 12 + row * 28 + 20});
+        L.palette.push_back(RECT{x + 108 + col * 22, top + 12 + row * 28,
+                                 x + 108 + col * 22 + 20, top + 12 + row * 28 + 20});
     }
-    L.editColors = RECT{x + 354, top + 4, x + 408, top + 76};
-    x += 414;
+    L.editColors = RECT{x + 326, top + 4, x + 380, top + 76};
+    x += 386;
     L.groups.push_back({L"Colors", colorsLeft, x});
 
     return L;
@@ -1246,8 +1248,8 @@ void DoCommand(WORD id) {
     if (id == 9001) {
         int curT = 1; g.attributes.GetValue(1, curT);
         HMENU m = CreatePopupMenu();
-        AppendMenuW(m, MF_STRING, 9201, L"No outline");
-        AppendMenuW(m, MF_STRING | MF_CHECKED, 9202, L"Solid color");
+        AppendMenuW(m, MF_STRING | (curT == 0 ? MF_CHECKED : 0), 9201, L"No outline");
+        AppendMenuW(m, MF_STRING | (curT > 0 ? MF_CHECKED : 0), 9202, L"Solid color");
         AppendMenuW(m, MF_SEPARATOR, 0, nullptr);
         AppendMenuW(m, MF_STRING | (curT == 1 ? MF_CHECKED : 0), 9203, L"1px");
         AppendMenuW(m, MF_STRING | (curT == 3 ? MF_CHECKED : 0), 9204, L"3px");
@@ -1256,8 +1258,8 @@ void DoCommand(WORD id) {
         POINT pt; GetCursorPos(&pt);
         int sel = TrackPopupMenuEx(m, TPM_RETURNCMD | TPM_LEFTALIGN | TPM_TOPALIGN, pt.x, pt.y, g.hwnd, nullptr);
         DestroyMenu(m);
-        if (sel == 9203 || sel == 9204 || sel == 9205 || sel == 9206) {
-            int t = sel == 9203 ? 1 : sel == 9204 ? 3 : sel == 9205 ? 5 : 8;
+        if (sel == 9201 || sel == 9202 || sel == 9203 || sel == 9204 || sel == 9205 || sel == 9206) {
+            int t = sel == 9201 ? 0 : sel == 9203 ? 1 : sel == 9204 ? 3 : sel == 9205 ? 5 : 8;
             g.attributes.SetValue(1, t); if (g.tool) g.tool->SetThickness(static_cast<unsigned>(t));
             InvalidateRect(g.hwnd, nullptr, TRUE);
         }
@@ -1278,6 +1280,15 @@ void DoCommand(WORD id) {
         HMENU m = CreatePopupMenu();
         AppendMenuW(m, MF_STRING | (g.toolKind == PaintToolKind::Selection ? MF_CHECKED : 0), 800, L"Rectangular selection");
         AppendMenuW(m, MF_STRING | (g.toolKind == PaintToolKind::FreeFormSelection ? MF_CHECKED : 0), 801, L"Free-form selection");
+        AppendMenuW(m, MF_SEPARATOR, 0, nullptr);
+        // REA: PaintUI.SelectionCommandBarViewModel exposes Cut/Copy/Paste,
+        // SelectAll and ClearSelection commands (ev_ffbc7e54...).
+        AppendMenuW(m, MF_STRING, 202, L"Cut\tCtrl+X");
+        AppendMenuW(m, MF_STRING, 203, L"Copy\tCtrl+C");
+        AppendMenuW(m, MF_STRING, 204, L"Paste\tCtrl+V");
+        AppendMenuW(m, MF_SEPARATOR, 0, nullptr);
+        AppendMenuW(m, MF_STRING, 206, L"Select all\tCtrl+A");
+        AppendMenuW(m, MF_STRING, 205, L"Clear image");
         POINT pt; GetCursorPos(&pt);
         int sel = TrackPopupMenuEx(m, TPM_RETURNCMD | TPM_LEFTALIGN | TPM_TOPALIGN, pt.x, pt.y, g.hwnd, nullptr);
         DestroyMenu(m);

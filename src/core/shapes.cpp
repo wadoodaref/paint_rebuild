@@ -223,8 +223,10 @@ void DrawShape(Image& image, const Rect& bounds, ShapeKind kind, Color color, bo
             }
         }
     }
-    for (std::size_t i = 0; i < points.size(); ++i)
-        AddThickLine(image, points[i], points[(i + 1) % points.size()], color, thickness);
+    if (thickness > 0) {
+        for (std::size_t i = 0; i < points.size(); ++i)
+            AddThickLine(image, points[i], points[(i + 1) % points.size()], color, thickness);
+    }
 }
 
 }  // namespace pr

@@ -628,4 +628,24 @@ consistent Paint 11-like typography.
 
 **Verification:** `powershell -ExecutionPolicy Bypass -File build.ps1 -Verbose` now builds both targets with MinGW-w64 (two benign warnings: MSVC-only `#pragma comment` in `icons.cpp`, unused `kPalette` in `main.cpp`); `pr_selftest.exe` reports 113 checks, 0 FAIL. GUI smoke launched `PaintRebuild - Untitled` successfully, which exposed the UI defects audited in the next session.
 
-**Commit:** 5f19a65
+**Commit:** 7df2b19 (after log-amend; the pre-amend hash was 5f19a65)
+
+## 2026-11-28 - Session 37 - REA-driven UI check and visible UI repair
+
+**Request:** "the ui not faithful to source? check?" then "use rea/mcp for copying the ui" and "also icons missing?"
+
+**Evidence gathered (REA/MCP):**
+- `inspect_pe_resources` on vendored `reference\paint-11.2609.441.0\PaintUI.dll` (`ev_7dd1b23f4ca6250de15705c35192a3eeda66dd39be01ccf5f51489e5178150ab`, complete): only two resources — RCDATA #387 (77,765 B) and RT_VERSION #1. The RCDATA payload was extracted read-only and is third-party licence text, not XAML/layout; it is deliberately not copied into the app or docs.
+- `inspect_managed_artifact` on `PaintUI.winmd` (`ev_d339ea33e8b4c772c7562b9971e657f3fcd6db90ddd98aebbfc7c27912227e56`, complete): 588 TypeDefs / 4185 MethodDefs / 2128 properties, MVID `9f3e7b49-...`.
+- `inspect_managed_members` full type inventory (`ev_faf81e8c40ffa72b15afde9b1aa25548817a9e9ed4b53dfbe7e49fd693165168`) and focused UI-type members (`ev_ffbc7e541f699b0558b50d31a48024ae87108aa05b337c4e3939326cefa6a9e6`, 276 selected methods): source command surface includes `Cut/Copy/Paste/SelectAll/ClearSelection`, `CopyMerged`, `Rotate90Right/Rotate90Left/Rotate180/RotateCustom`, `FlipHorizontal/FlipVertical`, `InvertColors`, `ShowResize`, and shape outline/fill styles (None/Color/Crayon/Marker/Oil/NaturalPencil/Watercolour). `RotateCustomDialogViewModel` exposes `RotationAngle`/`Orientation`.
+
+**Findings (observations):** the running UI was NOT a faithful copy. A screenshot of the rebuilt app showed empty Tools/Shapes button icons and truncated labels (`Rota▾`, `Outlin▾`, `Brushes▾`). Root causes:
+- `src/app/icons.cpp` resolved icons only under `<exe dir>\assets\icons`; all 49 PNGs live at the repo root, so every `GetIcon()` returned nullptr from the canonical `build\` launch.
+- Once icons loaded, a latent 4x buffer overrun in `DrawToolIcon` (`std::copy` of `width*height*4` uint32 elements into a byte buffer) crashed the app (gdb backtrace: `icons.cpp:87`, called from `DrawCmdBtn` -> `DrawCommandBar` -> `Paint`).
+- Compact command-button text rects reserved too much width for the chevron/icon.
+
+**Change:** `icons.cpp` now falls back to the parent directory's `assets\icons` and copies with `std::memcpy`; `build.ps1` stages the icons beside the executable; `main.cpp` widens Rotate/Flip/Brushes/Outline/Fill buttons, tightens shape-grid and palette spacing so the command bar still fits 1280 px, gives compact labels more room, wires the previously dead Outline "No outline"/"Solid color" menu items (`thickness 0` now really suppresses the outline via `shapes.cpp`), and adds the REA-observed Cut/Copy/Paste/Select all/Clear image entries to the Select dropdown.
+
+**Verification:** MinGW-w64 build OK; `pr_selftest.exe` 113 checks, 0 FAIL; app stays alive and a fresh screenshot shows all tool/shape icons and full labels. Remaining fidelity gaps (WinUI3 visuals, exact palette RGBs, arbitrary-angle custom-rotate dialog, outline/fill brush styles) are recorded in `docs/evidence/PAINT_MODULES.md`.
+
+**Commit:** 18f85ce

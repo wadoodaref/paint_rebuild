@@ -1,18 +1,30 @@
-# REA evidence sources (verified on this machine, 2026-11-27)
+# REA evidence sources (per-machine; verified 2026-11-27 and 2026-11-28)
 
 Paint is the behavioral reference. Per rules v7 §8, these paths are facts about
-**this machine**, not about the repo; a path in any doc is a hint to verify, not
-an assumption.
+**the machine on which they were checked**, not about the repo; a path in any
+doc is a hint to verify, not an assumption.
 
-## Verified installed artifacts
-| Artifact | Version (from package name) | Location (this machine, 2026-11-27) |
+## Verified on 2026-11-27 (source machine `DR-WADOOD-HP15`)
+| Artifact | Version (from package name) | Location on `DR-WADOOD-HP15` |
 |---|---|---|
 | Microsoft Paint (new) | 11.2609.441.0 | `C:\Program Files\WindowsApps\Microsoft.Paint_11.2609.441.0_x64__8wekyb3d8bbwe` |
 | Microsoft Paint (MSPaint bridge) | 6.2410.13017.0 | `C:\Program Files\WindowsApps\Microsoft.MSPaint_6.2410.13017.0_x64__8wekyb3d8bbwe` |
 
-Both were confirmed via `Get-AppxPackage` and a direct directory listing.
-No `mspaint.exe` exists in `C:\Windows\System32` on this machine — do not use
-the traditional path here.
+Both were confirmed there via `Get-AppxPackage` and a direct directory listing.
+
+## Verified on 2026-11-28 (current machine `C4-CLINIC`)
+- Paint 11.2609.441.0 is **not installed**: the recorded AppX directory does
+  not exist and a bounded scan of all fixed drives found no `Microsoft.Paint*`
+  package directory. Do not assume the 2026-11-27 path is valid here.
+- `Microsoft.MSPaint_6.2410.13017.0_x64__8wekyb3d8bbwe` **is** installed.
+  A classic `C:\Windows\System32\mspaint.exe` also exists here.
+- The vendored `reference\paint-11.2609.441.0\` bundle is therefore the only
+  local Paint 11 source. Note that its `manifest.json`/`README.md` list an
+  `mspaint.exe` that is **not actually present** in the folder; the PE-import
+  evidence for it cannot be re-verified on this machine.
+- No UIA capture/control tree or screenshot of Paint 11 is stored in this repo;
+  the "UIA-observed" layout notes in `chat.md` are historical assertions, not
+  reproducible evidence.
 
 ### Offline bundle (added 2026-11-27)
 The 11 analyzable core artifacts listed above are now vendored in

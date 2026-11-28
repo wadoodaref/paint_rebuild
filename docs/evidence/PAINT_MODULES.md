@@ -144,3 +144,52 @@ LICENSE/NOTICE file from a sibling project is carried in this repo.
   exact numeric command/resource IDs and CIL behaviour remain unknown (no
   decompilation or runtime observation was performed).
 - Version 6.2410 (MSPaint bridge) module layout not yet compared.
+
+## UI fidelity audit (2026-11-28, current machine `C4-CLINIC`)
+
+**Source availability (observation):** Paint 11 is not installed here; only the
+vendored bundle is available, and it lacks the `mspaint.exe` named in its
+manifest. The source machine was `DR-WADOOD-HP15` (see `REA_SOURCES.md`). No
+UIA tree or screenshot of the reference app is stored in the repo, so claims of
+a pixel-exact copy are **not provable** from local evidence.
+
+**New REA observations:**
+- `inspect_pe_resources` on vendored `PaintUI.dll`
+  (`ev_7dd1b23f4ca6250de15705c35192a3eeda66dd39be01ccf5f51489e5178150ab`,
+  complete) found exactly two resources: RCDATA #387 (77,765 bytes) and
+  RT_VERSION #1, no icon groups. The RCDATA payload was read once for
+  classification and is third-party licence text — not XAML/layout — and is
+  deliberately not copied anywhere in this project.
+- `inspect_managed_artifact` on `PaintUI.winmd`
+  (`ev_d339ea33e8b4c772c7562b9971e657f3fcd6db90ddd98aebbfc7c27912227e56`,
+  complete): 588 TypeDefs / 4185 MethodDefs / 2128 properties; MVID
+  `9f3e7b49-189c-4939-8e08-1371ae93e3b0`.
+- Full type inventory (`ev_faf81e8c40ffa72b15afde9b1aa25548817a9e9ed4b53dfbe7e49fd693165168`)
+  and focused UI-type member inspection
+  (`ev_ffbc7e541f699b0558b50d31a48024ae87108aa05b337c4e3939326cefa6a9e6`,
+  276 selected methods) confirm source UI contracts including
+  `SelectionCommandBarViewModel` (Cut/Copy/Paste/SelectAll/ClearSelection),
+  `ImageToolbarViewModel` (CopyMerged, ShowResize, Rotate90Right/Left/180,
+  RotateCustom, FlipHorizontal/Vertical, InvertColors), outline/fill style
+  commands (None/Color/Crayon/Marker/Oil/NaturalPencil/Watercolour) and
+  `RotateCustomDialogViewModel.RotationAngle`.
+
+**Observed defects in our UI (screenshot + gdb, 2026-11-28):** icons were blank
+because `GetIcon()` looked only in `<exe dir>\assets\icons` while the PNGs are
+at the repo root; compact labels were truncated; enabling icons exposed a
+4x source overrun in `DrawToolIcon` that crashed the app. All three are fixed
+in this session, and the REA-observed Cut/Copy/Paste/Select all/Clear image
+commands were added to the Select dropdown.
+
+**Remaining gaps (inference/unknown, not yet implemented):**
+- WinUI3/XAML visual fidelity (rounded corners, animations, exact typography)
+  is not achievable with the current hand-built GDI shell; no XAML resource is
+  present in the vendored bundle.
+- Exact palette RGB literals remain unavailable from artifacts (previous
+  unknown, unchanged).
+- `RotateCustomDialogViewModel.RotationAngle` has no equivalent: our "Custom
+  rotate..." command still opens the 5-preset radio dialog with no arbitrary
+  angle field.
+- Outline/fill brush-style commands (Crayon/Marker/Oil/NaturalPencil/
+  Watercolour) are not exposed; our shape outline/fill supports only none/
+  solid colour and a thickness.

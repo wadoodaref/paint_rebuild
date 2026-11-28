@@ -8,6 +8,16 @@ every push, regenerate per-machine `GITIGNORED_FILES_<machine>.md` on every
 push).
 
 ## Current state (2026-11-28)
+- **Machine note:** this PC (`C4-CLINIC`) has no Paint 11 install and no MSVC;
+  the portable MinGW-w64 toolchain is used, the app is built by `build.ps1`
+  (which stages `assets\icons` beside the exe). The vendored `reference/`
+  bundle is the only Paint 11 source here; its `mspaint.exe` is absent.
+- **UI fidelity (audited 2026-11-28):** the shell is a hand-built Win32/GDI
+  approximation of Paint 11's workflow, *not* a pixel/control-level copy. REA
+  evidence for the source UI contract is in `docs/evidence/PAINT_MODULES.md`
+  (UI fidelity audit section). Icons now load and labels are not truncated;
+  remaining gaps: WinUI3 visuals, exact palette RGBs, arbitrary-angle custom
+  rotate, and outline/fill brush styles.
 - Stages 0–8 DONE and verified, plus UI & module fidelity passes: scaffold,
   rules v7, REA evidence map, core `Image`/attributes/geometry, 20 auto-shapes
   (including `RightTriangle`), operation stock with undo/redo, full

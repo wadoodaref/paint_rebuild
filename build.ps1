@@ -91,4 +91,10 @@ try {
     Pop-Location
 }
 
+# The Win32 shell loads icons from <exe dir>\assets\icons; stage them next to
+# the executable so a clean checkout can run straight from build\.
+$iconDest = Join-Path $build 'assets\icons'
+New-Item -ItemType Directory -Force -Path $iconDest | Out-Null
+Copy-Item -Path (Join-Path $root 'assets\icons\*.png') -Destination $iconDest -Force
+
 Write-Host "build OK -> $build"
