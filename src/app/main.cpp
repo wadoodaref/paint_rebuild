@@ -1927,7 +1927,17 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam) 
             if (x >= canvas.left && x <= canvas.right && y >= canvas.top && y <= canvas.bottom) {
                 const pr::Point p = ToImagePoint(x, y);
                 if (g.toolKind == PaintToolKind::Zoom) {
-                    g.zoom = std::max(1, g.zoom / 2); InvalidateRect(hwnd, nullptr, TRUE); return 0;
+                    g.zoom = std::max(1, g.zoom / 2);
+                    ClampScroll();
+                    InvalidateRect(hwnd, nullptr, TRUE);
+                    return 0;
+                }
+                if (g.toolKind == PaintToolKind::PickColor && p.x >= 0 && p.y >= 0 &&
+                    p.x < g.image->width() && p.y < g.image->height()) {
+                    g.background = g.image->GetPixel(p);
+                    RebuildTool();
+                    InvalidateRect(hwnd, nullptr, FALSE);
+                    return 0;
                 }
                 if (g.toolKind == PaintToolKind::PickColor && p.x >= 0 && p.y >= 0 && p.x < g.image->width() && p.y < g.image->height()) {
                     g.background = g.image->GetPixel(p); RebuildTool(); InvalidateRect(hwnd, nullptr, TRUE); return 0;

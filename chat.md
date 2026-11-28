@@ -801,3 +801,13 @@ No source changes in this entry (self-referential; its own hash is in git log).
 - **Minimum window size (`WM_GETMINMAXINFO`):** enforced a `640×420` minimum track size so the left sliders and status bar never collapse.
 
 **Verification:** MSVC build 0 warnings/0 errors (both targets); `pr_selftest.exe` 117 checks, 0 FAIL; GUI smoke launched `paintrebuild.exe` (`alive=True`).
+
+## 2026-11-28 — Session 47 — PickColor right-click for Color 2 and Zoom right-click clamp
+
+**Request:** "proceed"
+
+**Change:** updated `WM_RBUTTONDOWN` in `src/app/main.cpp`:
+- When `PaintToolKind::PickColor` is active, right-clicking on the canvas samples the pixel under the cursor into `g.background` (`Color 2`), rebuilds the tool, and repaints instead of opening the context menu.
+- When `PaintToolKind::Zoom` is active, right-clicking to zoom out also calls `ClampScroll()`.
+
+**Verification:** MSVC build 0 warnings/0 errors (both targets); `pr_selftest.exe` 117 checks, 0 FAIL; GUI smoke launched `paintrebuild.exe` (`alive=True`).
