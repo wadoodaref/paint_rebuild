@@ -990,3 +990,16 @@ measured tokens), complementing the two-step canvas shadow adopted in Session 58
 
 **Commit:** 4f0e5274e864f7e9da5f84d10f2937a6dab0ee1f
 
+
+
+## 2026-11-28 - Session 61 - Document sibling styling pass
+
+**Change:** recorded the Sessions 58–60 sibling Windows-app styling pass in
+`PROJECT_PLAN.md` and `HANDOFF_CONTINUATION_PROMPT.md`. No application code
+changed.
+
+**Verification:** MSVC build 0 warnings/0 errors (both targets); `pr_selftest.exe`
+117 checks, 0 FAIL; GUI smoke launched `Untitled - PaintRebuild`.
+
+**Commit:** 023aa7c3c1d91dc2c790255f4584b685baee666e
+

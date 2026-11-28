@@ -90,3 +90,8 @@ autorecovery. We reimplement these boundaries in fresh C++, not copy them.
   drag-to-move selection with undo, and in-place text editor colors. Build clean
   (MSVC 14.44, 0 warnings/0 errors), selftest 117/117, GUI smoke OK on every
   stage. Stages 0–8 and all documented fidelity modules are complete.
+- 2026-11-28 (sibling Windows-app styling): WordRebuild v2 `word_theme.h`
+  tokens and font manager were re-declared in `src/app/ui_theme.h` (checked
+  #CDE4FF, card border #E1E1E1, status/ruler ink, workspace #E8E8E8, two-step
+  shadow, shared Segoe UI/ClearType fonts). Build clean, selftest 117/117,
+  GUI smoke OK; pushed in Sessions 58–60.

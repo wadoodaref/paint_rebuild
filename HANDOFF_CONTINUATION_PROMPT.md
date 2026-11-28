@@ -23,7 +23,9 @@ push).
   implemented (Session 39). Sessions 49–56 added the Paint-style title bar,
    canvas scrollbars, transparent-selection toggle, contextual Text tab with
    font/style/opaque controls, command enablement, drag-to-move selection and
-   in-place text editor colors.
+   in-place text editor colors. Sessions 58–60 re-declared measured Windows-app
+   tokens and the Segoe UI/ClearType font manager from sibling WordRebuild v2
+   (`word_theme.h`) in our own `ui_theme.h` — no sibling code/assets linked.
 - Stages 0–8 DONE and verified, plus UI & module fidelity passes: scaffold,
   rules v7, REA evidence map, core `Image`/attributes/geometry, 20 auto-shapes
   (including `RightTriangle`), operation stock with undo/redo, full
