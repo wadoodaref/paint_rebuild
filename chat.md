@@ -962,3 +962,18 @@ ruler, status bar and canvas shadow while keeping Paint's SVG-derived accent.
 
 **Commit:** ea812e79ff976ebf796f109d4c7519d65cd3b471
 
+
+
+## 2026-11-28 - Session 59 - Shared Windows-app font set from sibling
+
+**Change:** re-declared the sibling WordRebuild v2 font manager as
+`ui_theme::UiFonts` and initialized it once in `wWinMain`. Command-bar buttons,
+group captions, left-panel labels, status text and ruler numbers now use the
+matching Segoe UI / ClearType faces (ribbon 9pt, group/ruler 7.5pt, status 9pt)
+instead of per-function one-off fonts; fonts are released at exit.
+
+**Verification:** MSVC build 0 warnings/0 errors (both targets); `pr_selftest.exe`
+117 checks, 0 FAIL; GUI smoke launched `Untitled - PaintRebuild`.
+
+**Commit:** cba0f9521432614ad59ae43c136a7ab4c5db6fc6
+

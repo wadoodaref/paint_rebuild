@@ -738,9 +738,7 @@ void DrawCommandBar(HDC hdc) {
     GetClientRect(g.hwnd, &client);
     const int top = CommandBarTop();
     const int h = kCommandBarHeight;
-    static HFONT font = CreateFontW(-12, 0, 0, 0, FW_NORMAL, 0, 0, 0, DEFAULT_CHARSET,
-                                    0, 0, CLEARTYPE_QUALITY, 0, L"Segoe UI");
-    HGDIOBJ oldFont = SelectObject(hdc, font);
+    HGDIOBJ oldFont = SelectObject(hdc, ui_theme::g_fonts.hRibbonFont);
     HBRUSH bg = CreateSolidBrush(ui_theme::kSurface);
     FillRectValue(hdc, RECT{0, top, client.right, top + h}, bg);
     DeleteObject(bg);
@@ -754,6 +752,7 @@ void DrawCommandBar(HDC hdc) {
     CommandLayout L = BuildCommandLayout();
     SetBkMode(hdc, TRANSPARENT);
 
+    const HGDIOBJ oldGroupFont = SelectObject(hdc, ui_theme::g_fonts.hGroupFont);
     for (size_t i = 0; i < L.groups.size(); ++i) {
         const auto& grp = L.groups[i];
         if (i + 1 < L.groups.size())
@@ -762,6 +761,7 @@ void DrawCommandBar(HDC hdc) {
         SetTextColor(hdc, ui_theme::kGroupText);
         DrawTextW(hdc, grp.name, -1, &lr, DT_CENTER | DT_SINGLELINE | DT_VCENTER);
     }
+    SelectObject(hdc, oldGroupFont);
 
     for (const auto& b : L.buttons) {
         const bool iconOnly = (b.label == nullptr) || (b.icon == nullptr && b.label != nullptr);
@@ -941,9 +941,7 @@ void DrawLeftPanel(HDC hdc) {
     GetClientRect(g.hwnd, &client);
     const int top = CommandBarHeight();
     const int bottom = client.bottom - kStatusHeight;
-    static HFONT font = CreateFontW(-11, 0, 0, 0, FW_NORMAL, 0, 0, 0, DEFAULT_CHARSET,
-                                    0, 0, CLEARTYPE_QUALITY, 0, L"Segoe UI");
-    HGDIOBJ oldFont = SelectObject(hdc, font);
+    HGDIOBJ oldFont = SelectObject(hdc, ui_theme::g_fonts.hGroupFont);
     HBRUSH bg = CreateSolidBrush(ui_theme::kSurface);
     FillRectValue(hdc, RECT{0, top, kLeftPanelWidth, bottom}, bg);
     DeleteObject(bg);
@@ -1000,9 +998,7 @@ void DrawStatus(HDC hdc) {
     RECT client;
     GetClientRect(g.hwnd, &client);
     const int top = client.bottom - kStatusHeight;
-    static HFONT font = CreateFontW(-12, 0, 0, 0, FW_NORMAL, 0, 0, 0, DEFAULT_CHARSET,
-                                    0, 0, CLEARTYPE_QUALITY, 0, L"Segoe UI");
-    HGDIOBJ oldFont = SelectObject(hdc, font);
+    HGDIOBJ oldFont = SelectObject(hdc, ui_theme::g_fonts.hStatusFont);
     HBRUSH bg = CreateSolidBrush(ui_theme::kStatusBg);
     FillRectValue(hdc, RECT{0, top, client.right, client.bottom}, bg);
     DeleteObject(bg);
@@ -1112,9 +1108,7 @@ void DrawStatus(HDC hdc) {
 void DrawRuler(HDC hdc, const RECT& canvas) {
     if (!g_rulerVisible) return;
     const RECT ws = WorkspaceRect();
-    static HFONT rfont = CreateFontW(-10, 0, 0, 0, FW_NORMAL, 0, 0, 0, DEFAULT_CHARSET,
-                                     0, 0, CLEARTYPE_QUALITY, 0, L"Segoe UI");
-    HGDIOBJ oldFont = SelectObject(hdc, rfont);
+    HGDIOBJ oldFont = SelectObject(hdc, ui_theme::g_fonts.hRulerFont);
     HBRUSH face = CreateSolidBrush(ui_theme::kRulerFace);
     FillRectValue(hdc, RECT{ws.left, ws.top, ws.right, ws.top + kRulerSize}, face);
     FillRectValue(hdc, RECT{ws.left, ws.top, ws.left + kRulerSize, ws.bottom}, face);
@@ -2346,6 +2340,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam) 
 
 int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR cmdLine, int show) {
     CoInitialize(nullptr);
+    ui_theme::g_fonts.init();
     g.attributes.Add(1, 1);    // thickness
     g.attributes.Add(2, 0.0);  // tolerance (REA attribute IDs are GAP values)
     WNDCLASSW wc{};
@@ -2360,6 +2355,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR cmdLine, int show) {
                                 CW_USEDEFAULT, CW_USEDEFAULT, 1340, 820,
                                 nullptr, nullptr, instance, nullptr);
     if (!hwnd) {
+        ui_theme::g_fonts.cleanup();
         CoUninitialize();
         return 1;
     }
@@ -2376,6 +2372,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR cmdLine, int show) {
         TranslateMessage(&message);
         DispatchMessageW(&message);
     }
+    ui_theme::g_fonts.cleanup();
     CoUninitialize();
     return static_cast<int>(message.wParam);
 }

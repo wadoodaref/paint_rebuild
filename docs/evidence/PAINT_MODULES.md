@@ -238,3 +238,9 @@ permission, same family as Session 41) were re-declared in our own
 and a two-step #B4B4B4/#D2D2D2 canvas shadow. Paint-specific SVG-extracted
 accent (#005FB8) and ink (#373737/#555555) are preserved. No sibling code,
 assets or licence/NOTICE files were copied or linked.
+
+**Sibling font manager (2026-11-28, Session 59):** adopted the sibling
+WordRebuild v2 `Fonts` pattern (re-declared, not copied) as `ui_theme::UiFonts`:
+Segoe UI/ClearType ribbon 9pt, group captions 7.5pt, status 9pt, ruler 7.5pt,
+plus title/bold faces. Initialized once in `wWinMain`, used for command-bar,
+group, left-panel, status and ruler text, and released on exit.

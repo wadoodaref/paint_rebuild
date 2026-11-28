@@ -9,6 +9,7 @@
 #pragma once
 
 #include <windows.h>
+#include <initializer_list>
 
 namespace pr {
 namespace ui_theme {
@@ -46,6 +47,41 @@ constexpr COLORREF kRulerText        = RGB(90, 90, 90);     // sibling ruler num
 // Two-step page/canvas shadow (sibling Word 16 workspace tokens).
 constexpr COLORREF kShadowDark       = RGB(180, 180, 180);  // #B4B4B4
 constexpr COLORREF kShadowLight      = RGB(210, 210, 210);  // #D2D2D2
+
+// Segoe UI / ClearType font set for a Windows-app ribbon. Re-declared from the
+// sibling WordRebuild v2 font manager (no code copied); fonts are initialized
+// once in wWinMain and released at process exit.
+struct UiFonts {
+    HFONT hTitleFont = nullptr;
+    HFONT hBoldFont = nullptr;
+    HFONT hRibbonFont = nullptr;
+    HFONT hGroupFont = nullptr;
+    HFONT hStatusFont = nullptr;
+    HFONT hRulerFont = nullptr;
+
+    void init() {
+        if (hRibbonFont) return;
+        auto make = [](int height, int weight) {
+            return CreateFontW(height, 0, 0, 0, weight, FALSE, FALSE, FALSE,
+                               DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
+                               CLEARTYPE_QUALITY, DEFAULT_PITCH, L"Segoe UI");
+        };
+        hTitleFont  = make(-13, FW_SEMIBOLD);
+        hBoldFont   = make(-12, FW_BOLD);
+        hRibbonFont = make(-12, FW_NORMAL);
+        hGroupFont  = make(-10, FW_NORMAL);
+        hStatusFont = make(-12, FW_NORMAL);
+        hRulerFont  = make(-10, FW_NORMAL);
+    }
+
+    void cleanup() {
+        for (HFONT f : {hTitleFont, hBoldFont, hRibbonFont, hGroupFont, hStatusFont, hRulerFont})
+            if (f) DeleteObject(f);
+        hTitleFont = hBoldFont = hRibbonFont = hGroupFont = hStatusFont = hRulerFont = nullptr;
+    }
+};
+
+inline UiFonts g_fonts;
 
 }  // namespace ui_theme
 }  // namespace pr
