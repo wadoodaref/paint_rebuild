@@ -670,4 +670,10 @@ vertical flip checkboxes, same Segoe UI modal pattern as the other dialogs).
 app launches and stays alive. The arbitrary-angle path is exercised only
 through the GUI (no headless dialog harness exists); this is a known limit.
 
-**Commit:** 84d61f4
+**Commit:** f6769bf (after log-amend; pre-amend hash 84d61f4)
+
+## 2026-11-28 - Log correction - commit hashes after --amend
+
+The hashes recorded for Sessions 36-38 were corrected to the final pushed
+hashes; the amend step changed each commit ID after the log entry was written.
+No source changes in this entry (self-referential; its own hash is in git log).
