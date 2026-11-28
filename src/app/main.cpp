@@ -200,9 +200,9 @@ void NewDocument(int width, int height) {
 }
 
 void SetTitle() {
-    std::wstring title = L"PaintRebuild - ";
-    title += g.filePath.empty() ? L"Untitled" : g.filePath;
-    if (g.stock.IsDirty()) title += L"*";
+    std::wstring name = g.filePath.empty() ? L"Untitled" : g.filePath;
+    std::wstring title = name + L" - PaintRebuild";
+    if (g.stock.IsDirty()) title = L"* " + title;
     SetWindowTextW(g.hwnd, title.c_str());
 }
 
@@ -2073,7 +2073,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR cmdLine, int show) {
     wc.hCursor = LoadCursor(nullptr, IDC_ARROW);
     wc.hbrBackground = reinterpret_cast<HBRUSH>(COLOR_WINDOW + 1);
     RegisterClassW(&wc);
-    HWND hwnd = CreateWindowExW(0, L"PaintRebuildWindow", L"PaintRebuild",
+    HWND hwnd = CreateWindowExW(0, L"PaintRebuildWindow", L"Untitled - PaintRebuild",
                                 WS_OVERLAPPEDWINDOW | WS_CLIPCHILDREN,
                                 CW_USEDEFAULT, CW_USEDEFAULT, 1340, 820,
                                 nullptr, nullptr, instance, nullptr);

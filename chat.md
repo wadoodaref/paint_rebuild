@@ -1,4 +1,4 @@
-﻿# paint_rebuild â€” append-only session log
+# paint_rebuild â€” append-only session log
 
 Newest entries are appended at the bottom. One coherent change = one article +
 one commit + one push. Rules: `general_rules_read_first_v7.md`.
@@ -833,3 +833,16 @@ No source changes in this entry (self-referential; its own hash is in git log).
 - **Clipboard / Quick-Actions group (`BuildCommandLayout`, `DrawCommandBar`):** added a 3×2 compact group at the left of the command bar with `Save` (`save.png`), `Undo` (`↶`, disabled when `!g.stock.CanUndo()`), `Redo` (`↷`, disabled when `!g.stock.CanRedo()`), `Cut` (`office_cut.png`), `Copy` (`office_copy.png`), and `Paste` (`office_paste.png`), and widened the default window to `1340×820` so all 8 command-bar groups fit cleanly.
 
 **Verification:** MSVC build 0 warnings/0 errors (both targets); `pr_selftest.exe` 117 checks, 0 FAIL; GUI smoke launched `paintrebuild.exe` (`alive=True`).
+
+
+## 2026-11-28 - Session 50 - Title bar format fidelity
+
+**Change:** `SetTitle()` and initial window title now use Paint-style
+`<name> - PaintRebuild` (and `* <name> - PaintRebuild` when dirty), matching the
+source title-bar format.
+
+**Verification:** MSVC build 0 warnings/0 errors (both targets); `pr_selftest.exe`
+117 checks, 0 FAIL; GUI smoke launched with title `Untitled - PaintRebuild`.
+
+**Commit:** fe020c6b7917868239969c5b1a456b4fff1a87f1
+
