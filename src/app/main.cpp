@@ -1480,17 +1480,15 @@ void DoCommand(WORD id) {
             break;
         }
         case 406: {
-            FlipRotateOptions options;
-            if (!ShowFlipRotateDialog(g.hwnd, options)) break;
-            const auto choice = options.choice;
-            WholeImageOperation(OperationKind::FlipHorizontal, [&](Image& image) {
-                switch (choice) {
-                    case FlipRotateChoice::FlipHorizontal: image.HorizontalFlip(); break;
-                    case FlipRotateChoice::FlipVertical: image.VerticalFlip(); break;
-                    case FlipRotateChoice::Rotate90: image.Rotate(1.5707963267948966); break;
-                    case FlipRotateChoice::Rotate180: image.Rotate(3.1415926535897932); break;
-                    case FlipRotateChoice::Rotate270: image.Rotate(4.7123889803846899); break;
-                }
+            // REA: PaintUI.RotateCustomDialogViewModel.RotationAngle — accept an
+            // arbitrary signed angle plus optional flips instead of presets.
+            RotateCustomOptions options;
+            if (!ShowRotateCustomDialog(g.hwnd, options)) break;
+            const double radians = ToRadian(options.angleDegrees);
+            WholeImageOperation(OperationKind::Rotate, [&](Image& image) {
+                if (options.flipHorizontal) image.HorizontalFlip();
+                if (options.flipVertical) image.VerticalFlip();
+                if (std::abs(options.angleDegrees) > 0.0001) image.Rotate(radians);
             });
             break;
         }

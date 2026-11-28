@@ -648,4 +648,26 @@ consistent Paint 11-like typography.
 
 **Verification:** MinGW-w64 build OK; `pr_selftest.exe` 113 checks, 0 FAIL; app stays alive and a fresh screenshot shows all tool/shape icons and full labels. Remaining fidelity gaps (WinUI3 visuals, exact palette RGBs, arbitrary-angle custom-rotate dialog, outline/fill brush styles) are recorded in `docs/evidence/PAINT_MODULES.md`.
 
-**Commit:** 18f85ce
+**Commit:** 1674093 (after log-amend; pre-amend hash 18f85ce)
+
+## 2026-11-28 - Session 38 - Custom rotate dialog from REA UI contract
+
+**Request:** continue copying the UI from source evidence and finish remaining modules.
+
+**Evidence:** `PaintUI.RotateCustomDialogViewModel` exposes `RotationAngle` and
+`Orientation` (`ev_ffbc7e541f699b0558b50d31a48024ae87108aa05b337c4e3939326cefa6a9e6`);
+the `ImageToolbarViewModel` command list includes `RotateCustom` alongside
+`Rotate90Left/Right` and `Rotate180`.
+
+**Change:** added `RotateCustomOptions` and `ShowRotateCustomDialog` to
+`src/app/dialogs_win.h/.cpp` (signed angle in degrees, optional horizontal and
+vertical flip checkboxes, same Segoe UI modal pattern as the other dialogs).
+`src/app/main.cpp` case 406 now uses this dialog and applies the angle via
+`pr::ToRadian` + `Image::Rotate` inside the existing undoable
+`WholeImageOperation`, replacing the old reused 5-preset radio dialog.
+
+**Verification:** MinGW-w64 build OK; `pr_selftest.exe` 113 checks, 0 FAIL;
+app launches and stays alive. The arbitrary-angle path is exercised only
+through the GUI (no headless dialog harness exists); this is a known limit.
+
+**Commit:** 84d61f4

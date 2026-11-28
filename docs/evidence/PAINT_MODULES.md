@@ -187,9 +187,12 @@ commands were added to the Select dropdown.
   present in the vendored bundle.
 - Exact palette RGB literals remain unavailable from artifacts (previous
   unknown, unchanged).
-- `RotateCustomDialogViewModel.RotationAngle` has no equivalent: our "Custom
-  rotate..." command still opens the 5-preset radio dialog with no arbitrary
-  angle field.
 - Outline/fill brush-style commands (Crayon/Marker/Oil/NaturalPencil/
   Watercolour) are not exposed; our shape outline/fill supports only none/
   solid colour and a thickness.
+
+**Closed in Session 38:** `RotateCustomDialogViewModel.RotationAngle` now has an
+equivalent — "Custom rotate..." opens a signed-angle dialog with optional
+horizontal/vertical flips and commits one undoable `Image::Rotate` operation.
+No CIL body or numeric resource ID was inspected; the dialog is a clean-room
+Win32 reconstruction of the metadata-described contract, not a copied XAML UI.

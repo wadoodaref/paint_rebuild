@@ -7,7 +7,7 @@
 
 namespace {
 
-enum class DialogKind { StretchSkew, FlipRotate, Attributes };
+enum class DialogKind { StretchSkew, FlipRotate, Attributes, RotateCustom };
 
 struct DialogState {
     HWND hwnd = nullptr;
@@ -16,6 +16,7 @@ struct DialogState {
     bool accepted = false;
     bool running = false;
     int values[4] = {100, 100, 0, 0};
+    double angleDegrees = 0.0;
 };
 
 DialogState g_dialog;
@@ -63,6 +64,18 @@ LRESULT CALLBACK DialogProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPara
                 AddControl(hwnd, L"Button", L"Rotate 270 degrees", BS_AUTORADIOBUTTON | WS_TABSTOP,
                            24, 20, 116, 180, 20);
                 CheckDlgButton(hwnd, 22, BST_CHECKED);
+            } else if (kind == DialogKind::RotateCustom) {
+                AddLabel(hwnd, L"Angle (degrees)", 16, 20, 130);
+                wchar_t buffer[32];
+                swprintf(buffer, 32, L"%d", static_cast<int>(g_dialog.angleDegrees));
+                AddControl(hwnd, L"Edit", buffer, WS_BORDER | WS_TABSTOP, 10, 150, 18, 90, 22);
+                AddLabel(hwnd, L"(positive = clockwise)", 16, 52, 240);
+                AddControl(hwnd, L"Button", L"Flip horizontally", BS_AUTOCHECKBOX | WS_TABSTOP,
+                           20, 84, 16, 180, 20);
+                AddControl(hwnd, L"Button", L"Flip vertically", BS_AUTOCHECKBOX | WS_TABSTOP,
+                           21, 108, 16, 180, 20);
+                if (g_dialog.values[2]) CheckDlgButton(hwnd, 20, BST_CHECKED);
+                if (g_dialog.values[3]) CheckDlgButton(hwnd, 21, BST_CHECKED);
             } else {
                 AddLabel(hwnd, L"Width (pixels)", 16, 24, 120);
                 AddLabel(hwnd, L"Height (pixels)", 16, 56, 120);
@@ -89,6 +102,12 @@ LRESULT CALLBACK DialogProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPara
                             break;
                         }
                     }
+                } else if (g_dialog.kind == DialogKind::RotateCustom) {
+                    BOOL translated = FALSE;
+                    const int angle = GetDlgItemInt(hwnd, 10, &translated, TRUE);
+                    g_dialog.angleDegrees = translated ? angle : 0;
+                    g_dialog.values[2] = IsDlgButtonChecked(hwnd, 20) == BST_CHECKED ? 1 : 0;
+                    g_dialog.values[3] = IsDlgButtonChecked(hwnd, 21) == BST_CHECKED ? 1 : 0;
                 } else {
                     for (int i = 0; i < (g_dialog.kind == DialogKind::Attributes ? 2 : 4); ++i) {
                         BOOL translated = FALSE;
@@ -191,5 +210,16 @@ bool ShowAttributesDialog(HWND owner, int& width, int& height) {
     if (!RunModal(owner, DialogKind::Attributes, L"Image Properties", 320, 230)) return false;
     width = g_dialog.values[0];
     height = g_dialog.values[1];
+    return true;
+}
+
+bool ShowRotateCustomDialog(HWND owner, RotateCustomOptions& options) {
+    g_dialog.angleDegrees = options.angleDegrees;
+    g_dialog.values[2] = options.flipHorizontal ? 1 : 0;
+    g_dialog.values[3] = options.flipVertical ? 1 : 0;
+    if (!RunModal(owner, DialogKind::RotateCustom, L"Rotate and Flip", 320, 210)) return false;
+    options.angleDegrees = g_dialog.angleDegrees;
+    options.flipHorizontal = g_dialog.values[2] != 0;
+    options.flipVertical = g_dialog.values[3] != 0;
     return true;
 }

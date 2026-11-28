@@ -16,6 +16,14 @@ struct FlipRotateOptions {
     FlipRotateChoice choice = FlipRotateChoice::Rotate90;
 };
 
+// REA: PaintUI.RotateCustomDialogViewModel exposes RotationAngle/Orientation.
+struct RotateCustomOptions {
+    double angleDegrees = 0.0;   // degrees, signed; + = clockwise
+    bool flipHorizontal = false;
+    bool flipVertical = false;
+};
+
 bool ShowStretchSkewDialog(HWND owner, StretchSkewOptions& options);
 bool ShowFlipRotateDialog(HWND owner, FlipRotateOptions& options);
 bool ShowAttributesDialog(HWND owner, int& width, int& height);
+bool ShowRotateCustomDialog(HWND owner, RotateCustomOptions& options);
