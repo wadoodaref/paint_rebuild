@@ -8,10 +8,10 @@ every push, regenerate per-machine `GITIGNORED_FILES_<machine>.md` on every
 push).
 
 ## Current state (2026-11-28)
-- **Machine note:** this PC (`C4-CLINIC`) has no Paint 11 install and no MSVC;
-  the portable MinGW-w64 toolchain is used, the app is built by `build.ps1`
-  (which stages `assets\icons` beside the exe). The vendored `reference/`
-  bundle is the only Paint 11 source here; its `mspaint.exe` is absent.
+- **Machine note:** MSVC 14.44 (`vcvars64.bat`) is auto-detected and used by
+  `build.ps1` on this PC; portable MinGW-w64 remains a staged fallback. Paint 11
+  is not installed here, so the vendored read-only `reference/` bundle is the
+  local source artifact inventory (no runtime dependency on it).
 - **UI fidelity (audited 2026-11-28):** the shell is a hand-built Win32/GDI
   approximation of Paint 11's workflow, *not* a pixel/control-level copy. REA
   evidence for the source UI contract is in `docs/evidence/PAINT_MODULES.md`
@@ -20,7 +20,10 @@ push).
   clipboard icons from the sibling rebuilds were reused in Session 41 with
   owner permission). Custom rotate accepts
   an arbitrary angle (Session 38) and shape outline/fill brush styles are
-  implemented (Session 39).
+  implemented (Session 39). Sessions 49–56 added the Paint-style title bar,
+   canvas scrollbars, transparent-selection toggle, contextual Text tab with
+   font/style/opaque controls, command enablement, drag-to-move selection and
+   in-place text editor colors.
 - Stages 0–8 DONE and verified, plus UI & module fidelity passes: scaffold,
   rules v7, REA evidence map, core `Image`/attributes/geometry, 20 auto-shapes
   (including `RightTriangle`), operation stock with undo/redo, full
@@ -30,7 +33,7 @@ push).
   clipboard, Paint 11 Win32 shell (dynamic command bar, 8×3 shape gallery,
   selectable Color 1/2, responsive draggable Size/Opacity/Zoom sliders,
   margin rulers, centered/pannable canvas), modal `Segoe UI` dialogs, and
-  autorecovery. `pr_selftest.exe`: 117 checks, 0 FAIL.
+  autorecovery. `pr_selftest.exe`: 117 checks, 0 FAIL (all Sessions 49–56 verified).
 - Explicitly out of scope by user instruction: copied licence/NOTICE files and
   cloud/AI/provenance/telemetry modules (observed in REA, never implemented).
 - MSVC 14.44 auto-detected from
@@ -51,15 +54,14 @@ push).
 ## Build & verify
 ```powershell
 powershell -ExecutionPolicy Bypass -File build.ps1   # builds selftest + app
-build\pr_selftest.exe                                # 93 checks, 0 FAIL
+build\pr_selftest.exe                                # 117 checks, 0 FAIL
 build\paintrebuild.exe                              # GUI smoke verified
 powershell -ExecutionPolicy Bypass -File run.ps1
 ```
 
 ## Final state / remaining backlog
-- Stages 0–6 complete and pushed; stage 8 verification complete (see
-  `PROJECT_PLAN.md`). All 8 documented stages have a committed article in
-  `chat.md`.
+- Stages 0–8 complete and pushed; stage 8 verification and the Sessions 49–56
+  fidelity passes are logged in `PROJECT_PLAN.md` and `chat.md`.
 - Done in the latest stage: system clipboard `CF_DIB` bridge and real modal
   Attributes / Stretch-Skew / Flip-Rotate / Edit Colors dialogs.
 - Autorecovery is now implemented (60s snapshot, startup recovery prompt,
@@ -79,3 +81,5 @@ powershell -ExecutionPolicy Bypass -File run.ps1
   `tools\rea\inspect_local_reference.ps1`. Cloud/AI modules, licence files and
   assets are deliberately excluded; these files are read-only evidence only.
 - REA locator for this machine: `tools\rea\locate_paint.ps1 -Json`.
+
+- **Completion:** all planned stages and documented REA-mapped modules are finished; remaining differences from Paint 11 are WinUI3/GDI visual limits and evidence-only unknowns (exact palette RGB literals and numeric command IDs), recorded as such in `docs/evidence/PAINT_MODULES.md`.

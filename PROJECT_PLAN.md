@@ -13,7 +13,7 @@ recorded in `docs/evidence/` and used as evidence, never as copied code.
 | 1 | Core: `Point/Size/Rect/Color`, `Image` (ARGB pixels, blit/clear/fill, crop/resize/rotate/flip/skew/invert), `CAttributeStore`, `IPaintListener` | headless pixel tests pass; no Win32 UI dependency | DONE |
 | 2 | `Operation` stock + undo/redo + dirty tracking (BasePaint operation split) | selftest: N edits, undo/redo restores exact pixels | DONE |
 | 3 | `CPaintTool`-style tools: pencil, brush, airbrush, eraser, flood fill, pick colour, line, rect/auto-shape, selection, zoom | selftest verifies pixel geometry and per-tool attributes | DONE |
-| 4 | Codecs (`ImageProcessing` analog): native BMP, WIC/GDI+ PNG/JPEG | round-trip selftest (write → read → identical pixels) | BMP DONE; WIC TODO |
+| 4 | Codecs (`ImageProcessing` analog): native BMP, WIC/GDI+ PNG/JPEG | round-trip selftest (write → read → identical pixels) | DONE (BMP + WIC) |
 | 5 | `ProjectFile` analog: layers + document persistence, selection/clipboard | selftest covers layers, selection and transforms | DONE |
 | 6 | Win32 shell (`PaintUI` analog): window, tool box, color box, canvas, status bar, menus | app builds and launches; tools respond to mouse | DONE |
 | 7 | Paint dialogs + fidelity pass from REA evidence | Attributes, Edit Colors, Stretch/Skew, Flip/Rotate, Text, Zoom, recovery | DONE — dialogs, system clipboard, autorecovery and in-place text rendering implemented |
@@ -84,3 +84,9 @@ autorecovery. We reimplement these boundaries in fresh C++, not copy them.
   observed via UIA (Selection/Image/Tools/Brushes/Shapes/Size/Colors groups,
   left Size/Opacity sliders, bottom status bar with zoom controls); 49 source
   icons with alpha blending; build clean, selftest 103/103, GUI smoke OK.
+- 2026-11-28 (fidelity 49–56): Paint-style title bar, Win32 scrollbars,
+  transparent-selection toggle with paste keying, contextual Text tab with
+  font/size/B-I-U-S/opaque controls, selection-aware command enablement,
+  drag-to-move selection with undo, and in-place text editor colors. Build clean
+  (MSVC 14.44, 0 warnings/0 errors), selftest 117/117, GUI smoke OK on every
+  stage. Stages 0–8 and all documented fidelity modules are complete.
