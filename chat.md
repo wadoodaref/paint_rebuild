@@ -577,3 +577,14 @@ consistent Paint 11-like typography.
 
 **Commit:** c91fb53840e51575e3fa852c775ed611eebb85ae
 
+
+
+## 2026-11-27 ? Session 33 ? Ctrl+wheel and Ctrl+/- zoom
+
+**Change:** added Ctrl+mouse wheel zoom and Ctrl+Plus/Minus/0 zoom shortcuts
+(Paint 11 workflow fidelity). Fixed WndProc fall-through warning.
+
+**Verification:** MSVC build 0 warnings/0 errors; selftest 103 checks, 0 FAIL.
+
+**Commit:** 3b6a1a7eac0ca080acd9701106558cc3ccca48a4
+

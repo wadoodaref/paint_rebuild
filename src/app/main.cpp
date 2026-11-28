@@ -1237,6 +1237,16 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam) 
             if (g.drawing && g.tool) g.tool->OnStylusMove(p);
             return 0;
         }
+        case WM_MOUSEWHEEL: {
+            if (GetKeyState(VK_CONTROL) & 0x8000) {
+                const int delta = GET_WHEEL_DELTA_WPARAM(wParam);
+                if (delta > 0) g.zoom = std::min(16, g.zoom * 2);
+                else if (delta < 0) g.zoom = std::max(1, g.zoom / 2);
+                InvalidateRect(hwnd, nullptr, TRUE);
+                return 0;
+            }
+            return DefWindowProcW(hwnd, message, wParam, lParam);
+        }
         case WM_LBUTTONUP: {
             if (g.drawing && g.resizeEdge != 0) {
                 const int dx = (GET_X_LPARAM(lParam) - g_resizeStartX) / std::max(1, g.zoom);
@@ -1304,6 +1314,9 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam) 
                     case 'N': DoCommand(100); return 0;
                     case 'O': DoCommand(101); return 0;
                     case 'S': DoCommand(103); return 0;
+                    case VK_OEM_PLUS: case VK_ADD: g.zoom = std::min(16, g.zoom * 2); InvalidateRect(hwnd, nullptr, TRUE); return 0;
+                    case VK_OEM_MINUS: case VK_SUBTRACT: g.zoom = std::max(1, g.zoom / 2); InvalidateRect(hwnd, nullptr, TRUE); return 0;
+                    case '0': g.zoom = 1; InvalidateRect(hwnd, nullptr, TRUE); return 0;
                     default: break;
                 }
             } else if (wParam == VK_ESCAPE && IsFullScreen()) {
