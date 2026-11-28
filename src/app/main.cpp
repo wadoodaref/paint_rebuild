@@ -24,6 +24,7 @@
 #include "print_win.h"
 #include "recovery.h"
 #include "text_render.h"
+#include "ui_theme.h"
 #include "../core/image.h"
 #include "../core/operation.h"
 #include "../tools/tool.h"
@@ -73,6 +74,17 @@ struct CommandLayout {
     RECT shapeGrid{};
     std::vector<CommandButton> shapeButtons;
 };
+
+// Owner-drawn clipboard menu entries reuse generic Office icons from the
+// sibling rebuilds (owner permission, 2026-11-28); Paint's own tool icons
+// remain sourced from the vendored Paint 11 SVGs.
+struct MenuIconItem {
+    const char* icon;
+    const wchar_t* label;
+};
+static const MenuIconItem kMenuCut{"office_cut.png", L"Cut\tCtrl+X"};
+static const MenuIconItem kMenuCopy{"office_copy.png", L"Copy\tCtrl+C"};
+static const MenuIconItem kMenuPaste{"office_paste.png", L"Paste\tCtrl+V"};
 
 int CommandBarTop() { return 0; }  // below Win32 menu bar, in client coords
 
@@ -348,7 +360,7 @@ void DrawCanvas(HDC hdc, const RECT& canvas) {
 }
 
 static void DrawVSeparator(HDC hdc, int x, int top, int bottom) {
-    HPEN pen = CreatePen(PS_SOLID, 1, RGB(218, 218, 218));
+    HPEN pen = CreatePen(PS_SOLID, 1, ui_theme::kDivider);
     HGDIOBJ old = SelectObject(hdc, pen);
     MoveToEx(hdc, x, top + 8, nullptr);
     LineTo(hdc, x, bottom - 8);
@@ -359,10 +371,10 @@ static void DrawVSeparator(HDC hdc, int x, int top, int bottom) {
 static void DrawCmdBtn(HDC hdc, const RECT& r, const char* icon, const wchar_t* label,
                        bool selected, bool hovered, bool iconOnly, bool dropdown = false,
                        bool enabled = true) {
-    COLORREF bg = selected ? RGB(204, 228, 247)
-                           : (hovered && enabled ? RGB(232, 232, 232) : RGB(243, 243, 243));
-    COLORREF border = selected ? RGB(0, 120, 215)
-                               : (hovered && enabled ? RGB(212, 212, 212) : bg);
+    COLORREF bg = selected ? ui_theme::kBtnChecked
+                           : (hovered && enabled ? ui_theme::kBtnHover : ui_theme::kSurface);
+    COLORREF border = selected ? ui_theme::kBtnCheckedBorder
+                               : (hovered && enabled ? ui_theme::kDivider : bg);
     HBRUSH br = CreateSolidBrush(bg);
     HPEN pen = CreatePen(PS_SOLID, 1, border);
     HGDIOBJ oldPen = SelectObject(hdc, pen);
@@ -392,7 +404,7 @@ static void DrawCmdBtn(HDC hdc, const RECT& r, const char* icon, const wchar_t* 
     }
     if (label && !iconOnly) {
         SetBkMode(hdc, TRANSPARENT);
-        SetTextColor(hdc, enabled ? RGB(32, 32, 32) : RGB(150, 150, 150));
+        SetTextColor(hdc, enabled ? ui_theme::kTextPrimary : ui_theme::kDisabledText);
         if (compactHoriz) {
             RECT tr{r.left + 20, r.top, r.right - (dropdown ? 7 : 4), r.bottom};
             DrawTextW(hdc, label, -1, &tr, DT_LEFT | DT_SINGLELINE | DT_VCENTER);
@@ -571,10 +583,10 @@ void DrawCommandBar(HDC hdc) {
     static HFONT font = CreateFontW(-12, 0, 0, 0, FW_NORMAL, 0, 0, 0, DEFAULT_CHARSET,
                                     0, 0, CLEARTYPE_QUALITY, 0, L"Segoe UI");
     HGDIOBJ oldFont = SelectObject(hdc, font);
-    HBRUSH bg = CreateSolidBrush(RGB(243, 243, 243));
+    HBRUSH bg = CreateSolidBrush(ui_theme::kSurface);
     FillRectValue(hdc, RECT{0, top, client.right, top + h}, bg);
     DeleteObject(bg);
-    HPEN line = CreatePen(PS_SOLID, 1, RGB(218, 218, 218));
+    HPEN line = CreatePen(PS_SOLID, 1, ui_theme::kDivider);
     HGDIOBJ oldPen = SelectObject(hdc, line);
     MoveToEx(hdc, 0, top + h - 1, nullptr);
     LineTo(hdc, client.right, top + h - 1);
@@ -589,7 +601,7 @@ void DrawCommandBar(HDC hdc) {
         if (i + 1 < L.groups.size())
             DrawVSeparator(hdc, grp.right + 2, top, top + h);
         RECT lr{grp.left, top + h - 22, grp.right, top + h - 4};
-        SetTextColor(hdc, RGB(96, 96, 96));
+        SetTextColor(hdc, ui_theme::kGroupText);
         DrawTextW(hdc, grp.name, -1, &lr, DT_CENTER | DT_SINGLELINE | DT_VCENTER);
     }
 
@@ -603,8 +615,10 @@ void DrawCommandBar(HDC hdc) {
         const auto& sb = L.shapeButtons[i];
         const bool sel = sb.toggle;
         const bool hov = (g_hoverShapeIdx == i);
-        COLORREF sbg = sel ? RGB(204, 228, 247) : (hov ? RGB(232, 232, 232) : RGB(243, 243, 243));
-        COLORREF sbd = sel ? RGB(0, 120, 215) : (hov ? RGB(212, 212, 212) : sbg);
+        COLORREF sbg = sel ? ui_theme::kBtnChecked
+                           : (hov ? ui_theme::kBtnHover : ui_theme::kSurface);
+        COLORREF sbd = sel ? ui_theme::kBtnCheckedBorder
+                           : (hov ? ui_theme::kDivider : sbg);
         HBRUSH br = CreateSolidBrush(sbg);
         HPEN p = CreatePen(PS_SOLID, 1, sbd);
         HGDIOBJ op = SelectObject(hdc, p);
@@ -620,8 +634,10 @@ void DrawCommandBar(HDC hdc) {
 
     // Color 1 / Color 2 selectable swatch buttons (Paint 11 style)
     auto drawActiveColorBtn = [&](const RECT& r, Color c, bool active, bool hovered, const wchar_t* lbl) {
-        COLORREF cbg = active ? RGB(204, 228, 247) : (hovered ? RGB(232, 232, 232) : RGB(243, 243, 243));
-        COLORREF cbd = active ? RGB(0, 120, 215) : (hovered ? RGB(212, 212, 212) : cbg);
+        COLORREF cbg = active ? ui_theme::kBtnChecked
+                              : (hovered ? ui_theme::kBtnHover : ui_theme::kSurface);
+        COLORREF cbd = active ? ui_theme::kBtnCheckedBorder
+                              : (hovered ? ui_theme::kDivider : cbg);
         HBRUSH br = CreateSolidBrush(cbg);
         HPEN pen = CreatePen(PS_SOLID, 1, cbd);
         HGDIOBJ op = SelectObject(hdc, pen);
@@ -635,7 +651,7 @@ void DrawCommandBar(HDC hdc) {
         const int cx = (r.left + r.right) / 2;
         const int cy = r.top + 24;
         HBRUSH cb = CreateSolidBrush(RGB(Red(c), Green(c), Blue(c)));
-        HPEN cp = CreatePen(PS_SOLID, 1, RGB(150, 150, 150));
+        HPEN cp = CreatePen(PS_SOLID, 1, ui_theme::kDisabledText);
         op = SelectObject(hdc, cp);
         ob = SelectObject(hdc, cb);
         Ellipse(hdc, cx - 13, cy - 13, cx + 13, cy + 13);
@@ -645,7 +661,7 @@ void DrawCommandBar(HDC hdc) {
         DeleteObject(cb);
 
         RECT lr{r.left, r.top + 44, r.right, r.bottom - 4};
-        SetTextColor(hdc, RGB(32, 32, 32));
+        SetTextColor(hdc, ui_theme::kTextPrimary);
         DrawTextW(hdc, lbl, -1, &lr, DT_CENTER | DT_SINGLELINE | DT_VCENTER);
     };
     drawActiveColorBtn(L.color1, g.foreground, g_activeColorSlot == 1, g_hoverColor1, L"Color 1");
@@ -659,7 +675,8 @@ void DrawCommandBar(HDC hdc) {
                             Blue(c) == Blue(activeCol));
         const bool hov = (g_hoverPaletteIdx == i);
         if (match || hov) {
-            HPEN ring = CreatePen(PS_SOLID, match ? 2 : 1, match ? RGB(0, 120, 215) : RGB(150, 150, 150));
+            HPEN ring = CreatePen(PS_SOLID, match ? 2 : 1,
+                                  match ? ui_theme::kSliderFill : ui_theme::kDisabledText);
             HGDIOBJ op = SelectObject(hdc, ring);
             HGDIOBJ ob = SelectObject(hdc, GetStockObject(NULL_BRUSH));
             Ellipse(hdc, r.left - 2, r.top - 2, r.right + 2, r.bottom + 2);
@@ -669,7 +686,7 @@ void DrawCommandBar(HDC hdc) {
         }
         HBRUSH cb = CreateSolidBrush(RGB(Red(c), Green(c), Blue(c)));
         HGDIOBJ oldB = SelectObject(hdc, cb);
-        HPEN pen = CreatePen(PS_SOLID, 1, RGB(180, 180, 180));
+        HPEN pen = CreatePen(PS_SOLID, 1, ui_theme::kSwatchOutline);
         HGDIOBJ oldP = SelectObject(hdc, pen);
         Ellipse(hdc, r.left, r.top, r.right, r.bottom);
         SelectObject(hdc, oldP);
@@ -709,8 +726,8 @@ void DrawVerticalSlider(HDC hdc, int cx, int y1, int y2, double frac) {
     frac = std::max(0.0, std::min(1.0, frac));
     const int h = y2 - y1;
     const int thumbY = y2 - static_cast<int>(frac * h);
-    HBRUSH track = CreateSolidBrush(RGB(205, 205, 205));
-    HPEN tp = CreatePen(PS_SOLID, 1, RGB(205, 205, 205));
+    HBRUSH track = CreateSolidBrush(ui_theme::kSliderTrack);
+    HPEN tp = CreatePen(PS_SOLID, 1, ui_theme::kSliderTrack);
     HGDIOBJ op = SelectObject(hdc, tp);
     HGDIOBJ ob = SelectObject(hdc, track);
     RoundRect(hdc, cx - 2, y1, cx + 2, y2, 4, 4);
@@ -720,8 +737,8 @@ void DrawVerticalSlider(HDC hdc, int cx, int y1, int y2, double frac) {
     DeleteObject(track);
 
     if (thumbY < y2) {
-        HBRUSH fill = CreateSolidBrush(RGB(0, 120, 215));
-        HPEN fp = CreatePen(PS_SOLID, 1, RGB(0, 120, 215));
+        HBRUSH fill = CreateSolidBrush(ui_theme::kSliderFill);
+        HPEN fp = CreatePen(PS_SOLID, 1, ui_theme::kSliderFill);
         op = SelectObject(hdc, fp);
         ob = SelectObject(hdc, fill);
         RoundRect(hdc, cx - 2, thumbY, cx + 2, y2, 4, 4);
@@ -732,7 +749,7 @@ void DrawVerticalSlider(HDC hdc, int cx, int y1, int y2, double frac) {
     }
 
     HBRUSH outer = CreateSolidBrush(RGB(255, 255, 255));
-    HPEN op2 = CreatePen(PS_SOLID, 1, RGB(180, 180, 180));
+    HPEN op2 = CreatePen(PS_SOLID, 1, ui_theme::kSwatchOutline);
     op = SelectObject(hdc, op2);
     ob = SelectObject(hdc, outer);
     Ellipse(hdc, cx - 7, thumbY - 7, cx + 7, thumbY + 7);
@@ -741,8 +758,8 @@ void DrawVerticalSlider(HDC hdc, int cx, int y1, int y2, double frac) {
     DeleteObject(op2);
     DeleteObject(outer);
 
-    HBRUSH inner = CreateSolidBrush(RGB(0, 120, 215));
-    HPEN ip = CreatePen(PS_SOLID, 1, RGB(0, 120, 215));
+    HBRUSH inner = CreateSolidBrush(ui_theme::kSliderFill);
+    HPEN ip = CreatePen(PS_SOLID, 1, ui_theme::kSliderFill);
     op = SelectObject(hdc, ip);
     ob = SelectObject(hdc, inner);
     Ellipse(hdc, cx - 4, thumbY - 4, cx + 4, thumbY + 4);
@@ -760,10 +777,10 @@ void DrawLeftPanel(HDC hdc) {
     static HFONT font = CreateFontW(-11, 0, 0, 0, FW_NORMAL, 0, 0, 0, DEFAULT_CHARSET,
                                     0, 0, CLEARTYPE_QUALITY, 0, L"Segoe UI");
     HGDIOBJ oldFont = SelectObject(hdc, font);
-    HBRUSH bg = CreateSolidBrush(RGB(243, 243, 243));
+    HBRUSH bg = CreateSolidBrush(ui_theme::kSurface);
     FillRectValue(hdc, RECT{0, top, kLeftPanelWidth, bottom}, bg);
     DeleteObject(bg);
-    HPEN line = CreatePen(PS_SOLID, 1, RGB(218, 218, 218));
+    HPEN line = CreatePen(PS_SOLID, 1, ui_theme::kDivider);
     HGDIOBJ op = SelectObject(hdc, line);
     MoveToEx(hdc, kLeftPanelWidth - 1, top, nullptr);
     LineTo(hdc, kLeftPanelWidth - 1, bottom);
@@ -819,17 +836,17 @@ void DrawStatus(HDC hdc) {
     static HFONT font = CreateFontW(-12, 0, 0, 0, FW_NORMAL, 0, 0, 0, DEFAULT_CHARSET,
                                     0, 0, CLEARTYPE_QUALITY, 0, L"Segoe UI");
     HGDIOBJ oldFont = SelectObject(hdc, font);
-    HBRUSH bg = CreateSolidBrush(RGB(243, 243, 243));
+    HBRUSH bg = CreateSolidBrush(ui_theme::kStatusBg);
     FillRectValue(hdc, RECT{0, top, client.right, client.bottom}, bg);
     DeleteObject(bg);
-    HPEN line = CreatePen(PS_SOLID, 1, RGB(218, 218, 218));
+    HPEN line = CreatePen(PS_SOLID, 1, ui_theme::kDivider);
     HGDIOBJ op = SelectObject(hdc, line);
     MoveToEx(hdc, 0, top, nullptr);
     LineTo(hdc, client.right, top);
     SelectObject(hdc, op);
     DeleteObject(line);
     SetBkMode(hdc, TRANSPARENT);
-    SetTextColor(hdc, RGB(60, 60, 60));
+    SetTextColor(hdc, ui_theme::kStatusText);
 
     // Left: cursor pos (when inside image), selection size (when active), canvas size
     if (g.cursorX >= 0 && g.cursorY >= 0 && g.image &&
@@ -854,7 +871,7 @@ void DrawStatus(HDC hdc) {
     auto drawSBtn = [&](const RECT& r, const char* icon, const wchar_t* fallback, bool hov) {
         if (hov) {
             HBRUSH hb = CreateSolidBrush(RGB(228, 228, 228));
-            HPEN hp = CreatePen(PS_SOLID, 1, RGB(205, 205, 205));
+            HPEN hp = CreatePen(PS_SOLID, 1, ui_theme::kSliderTrack);
             HGDIOBJ ohp = SelectObject(hdc, hp);
             HGDIOBJ ohb = SelectObject(hdc, hb);
             RoundRect(hdc, r.left, r.top, r.right, r.bottom, 4, 4);
@@ -880,16 +897,16 @@ void DrawStatus(HDC hdc) {
     const int sr = S.slider.right - 8;
     const int cy = (S.slider.top + S.slider.bottom) / 2;
     const int zx = sl + (g.zoom - 1) * (sr - sl) / 15;
-    HBRUSH trk = CreateSolidBrush(RGB(200, 200, 200));
+    HBRUSH trk = CreateSolidBrush(ui_theme::kSliderTrack);
     FillRectValue(hdc, RECT{sl, cy - 2, sr, cy + 2}, trk);
     DeleteObject(trk);
     if (zx > sl) {
-        HBRUSH fl = CreateSolidBrush(RGB(0, 120, 215));
+        HBRUSH fl = CreateSolidBrush(ui_theme::kSliderFill);
         FillRectValue(hdc, RECT{sl, cy - 2, zx, cy + 2}, fl);
         DeleteObject(fl);
     }
     HBRUSH tho = CreateSolidBrush(RGB(255, 255, 255));
-    HPEN thop = CreatePen(PS_SOLID, 1, RGB(180, 180, 180));
+    HPEN thop = CreatePen(PS_SOLID, 1, ui_theme::kSwatchOutline);
     HGDIOBJ op1 = SelectObject(hdc, thop);
     HGDIOBJ ob1 = SelectObject(hdc, tho);
     Ellipse(hdc, zx - 7, cy - 7, zx + 7, cy + 7);
@@ -897,8 +914,8 @@ void DrawStatus(HDC hdc) {
     SelectObject(hdc, op1);
     DeleteObject(thop);
     DeleteObject(tho);
-    HBRUSH thi = CreateSolidBrush(RGB(0, 120, 215));
-    HPEN thip = CreatePen(PS_SOLID, 1, RGB(0, 120, 215));
+    HBRUSH thi = CreateSolidBrush(ui_theme::kSliderFill);
+    HPEN thip = CreatePen(PS_SOLID, 1, ui_theme::kSliderFill);
     op1 = SelectObject(hdc, thip);
     ob1 = SelectObject(hdc, thi);
     Ellipse(hdc, zx - 4, cy - 4, zx + 4, cy + 4);
@@ -917,7 +934,7 @@ void DrawRuler(HDC hdc, const RECT& canvas) {
     static HFONT rfont = CreateFontW(-10, 0, 0, 0, FW_NORMAL, 0, 0, 0, DEFAULT_CHARSET,
                                      0, 0, CLEARTYPE_QUALITY, 0, L"Segoe UI");
     HGDIOBJ oldFont = SelectObject(hdc, rfont);
-    HBRUSH face = CreateSolidBrush(RGB(246, 246, 246));
+    HBRUSH face = CreateSolidBrush(ui_theme::kRulerFace);
     FillRectValue(hdc, RECT{ws.left, ws.top, ws.right, ws.top + kRulerSize}, face);
     FillRectValue(hdc, RECT{ws.left, ws.top, ws.left + kRulerSize, ws.bottom}, face);
     DeleteObject(face);
@@ -973,7 +990,7 @@ void Paint(HWND hwnd) {
     HDC mem = CreateCompatibleDC(hdc);
     HBITMAP bitmap = CreateCompatibleBitmap(hdc, client.right, client.bottom);
     HGDIOBJ old = SelectObject(mem, bitmap);
-    HBRUSH wsBrush = CreateSolidBrush(RGB(238, 238, 238));
+    HBRUSH wsBrush = CreateSolidBrush(ui_theme::kWorkspaceBg);
     FillRect(mem, &client, wsBrush);
     DeleteObject(wsBrush);
 
@@ -1310,9 +1327,9 @@ void DoCommand(WORD id) {
         AppendMenuW(m, MF_SEPARATOR, 0, nullptr);
         // REA: PaintUI.SelectionCommandBarViewModel exposes Cut/Copy/Paste,
         // SelectAll and ClearSelection commands (ev_ffbc7e54...).
-        AppendMenuW(m, MF_STRING, 202, L"Cut\tCtrl+X");
-        AppendMenuW(m, MF_STRING, 203, L"Copy\tCtrl+C");
-        AppendMenuW(m, MF_STRING, 204, L"Paste\tCtrl+V");
+        AppendMenuW(m, MF_OWNERDRAW, 202, reinterpret_cast<LPCWSTR>(&kMenuCut));
+        AppendMenuW(m, MF_OWNERDRAW, 203, reinterpret_cast<LPCWSTR>(&kMenuCopy));
+        AppendMenuW(m, MF_OWNERDRAW, 204, reinterpret_cast<LPCWSTR>(&kMenuPaste));
         AppendMenuW(m, MF_SEPARATOR, 0, nullptr);
         AppendMenuW(m, MF_STRING, 206, L"Select all\tCtrl+A");
         AppendMenuW(m, MF_STRING, 205, L"Clear image");
@@ -1552,6 +1569,26 @@ void DoCommand(WORD id) {
 
 LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam) {
     switch (message) {
+        case WM_DRAWITEM: {
+            auto* item = reinterpret_cast<DRAWITEMSTRUCT*>(lParam);
+            if (item && item->CtlType == ODT_MENU && item->itemData) {
+                auto* menuItem = reinterpret_cast<const MenuIconItem*>(item->itemData);
+                RECT rc = item->rcItem;
+                const bool selected = (item->itemState & ODS_SELECTED) != 0;
+                HBRUSH br = CreateSolidBrush(selected ? ui_theme::kBtnChecked
+                                                      : ui_theme::kSurface);
+                FillRect(item->hDC, &rc, br);
+                DeleteObject(br);
+                if (Image* icon = GetIcon(menuItem->icon))
+                    DrawToolIcon(item->hDC, *icon, rc.left + 4, rc.top + 2, 16);
+                SetBkMode(item->hDC, TRANSPARENT);
+                SetTextColor(item->hDC, ui_theme::kTextPrimary);
+                RECT tr{rc.left + 26, rc.top, rc.right - 4, rc.bottom};
+                DrawTextW(item->hDC, menuItem->label, -1, &tr,
+                          DT_LEFT | DT_SINGLELINE | DT_VCENTER | DT_EXPANDTABS);
+            }
+            return TRUE;
+        }
         case WM_CREATE: {
             g.hwnd = hwnd;
             HMENU menu = CreateMenu();

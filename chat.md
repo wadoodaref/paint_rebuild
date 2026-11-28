@@ -713,6 +713,37 @@ checks, 0 FAIL; GUI smoke launched and stayed alive.
 
 **Commit:** d78fe69
 
+## 2026-11-28 - Session 41 - Reuse sibling Office icons and theme tokens
+
+**Request:** "u r free to use the icons, styles, donot invent the wheel ... ppt
+rebuild is another app in c++ with microsoft ui also ... are all modules
+finished for pic editing??"
+
+**Decision:** Paint's own 49 PNGs are rendered from the vendored Paint 11 SVGs
+and stay the source of truth for tool/shape glyphs; Word/PowerPoint tool icons
+would be wrong for Paint. Owner permission was used only where it genuinely
+fits: generic clipboard icons and shared measured Fluent colour tokens.
+
+**Change:** added `src/app/ui_theme.h` with colour tokens adapted from
+`word_rebuild_v2/src/app/word_theme.h` and `ppt_rebuild/src/ui/ppt_theme.h`
+(owner permission 2026-11-28), and replaced the invented RGB literals in
+`src/app/main.cpp` (buttons, hover/checked states, group captions, separators,
+sliders, status bar, rulers, workspace) with those shared tokens. Copied
+`cut.png`/`copy.png`/`paste.png` from `word_rebuild_v2/assets/word_icons` as
+`office_*.png` and wired them into an owner-drawn Select dropdown
+(`WM_DRAWITEM`) alongside the REA-observed clipboard commands.
+
+**Caveat:** the token values were measured from Office 16 apps in the sibling
+projects; Paint 11's exact hex values are still absent from the vendored REA
+artifacts, so this is a closer Microsoft visual basis, not a Paint-verified
+pixel match.
+
+**Verification:** MinGW-w64 build 0 warnings/0 errors; `pr_selftest.exe` 117
+checks, 0 FAIL; GUI smoke plus screenshots confirm themed surfaces and the
+icon-bearing clipboard menu render correctly.
+
+**Commit:** (pending)
+
 ## 2026-11-28 - Log correction - commit hashes after --amend
 
 The hashes recorded for Sessions 36-38 were corrected to the final pushed

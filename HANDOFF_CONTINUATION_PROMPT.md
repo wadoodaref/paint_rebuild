@@ -16,7 +16,9 @@ push).
   approximation of Paint 11's workflow, *not* a pixel/control-level copy. REA
   evidence for the source UI contract is in `docs/evidence/PAINT_MODULES.md`
   (UI fidelity audit section). Icons now load and labels are not truncated;
-  remaining gaps: WinUI3 visuals and exact palette RGBs. Custom rotate accepts
+  remaining gaps: WinUI3 visuals and exact palette RGBs (Office 16 tokens and
+  clipboard icons from the sibling rebuilds were reused in Session 41 with
+  owner permission). Custom rotate accepts
   an arbitrary angle (Session 38) and shape outline/fill brush styles are
   implemented (Session 39).
 - Stages 0–8 DONE and verified, plus UI & module fidelity passes: scaffold,

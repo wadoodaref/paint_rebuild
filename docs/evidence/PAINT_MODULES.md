@@ -186,7 +186,11 @@ commands were added to the Select dropdown.
   is not achievable with the current hand-built GDI shell; no XAML resource is
   present in the vendored bundle.
 - Exact palette RGB literals remain unavailable from artifacts (previous
-  unknown, unchanged).
+  unknown, unchanged). Session 41 adopted measured Office 16 visual tokens and
+  three generic clipboard icons from the sibling rebuilds with owner
+  permission (`src/app/ui_theme.h`, `assets/icons/office_*.png`). That is a
+  closer Microsoft basis than invented literals, but it is not Paint-verified
+  and is recorded as inference, not source evidence.
 
 **Closed in Session 40:** `CopyMerged` is exposed as Edit > Copy merged and
 copies the whole image regardless of selection.
