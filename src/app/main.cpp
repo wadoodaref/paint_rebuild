@@ -1531,6 +1531,10 @@ void DoCommand(WORD id) {
             auto pasted = PasteImageFromClipboard();
             if (pasted) {
                 WholeImageOperation(OperationKind::FillRectangle, [&](Image& image) {
+                    const int nw = std::max(image.width(), pasted->width());
+                    const int nh = std::max(image.height(), pasted->height());
+                    if (nw != image.width() || nh != image.height())
+                        image.Resize(Size{nw, nh}, ResizeMode::Nearest, ResizeDirection::Both);
                     image.Blit(*pasted, Point{0, 0});
                 });
             } else if (g.clipboard.HasContent()) {
@@ -1989,6 +1993,12 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam) 
                 SetTitle();
                 InvalidateRect(hwnd, nullptr, TRUE);
             }
+            return 0;
+        }
+        case WM_GETMINMAXINFO: {
+            auto* mmi = reinterpret_cast<MINMAXINFO*>(lParam);
+            mmi->ptMinTrackSize.x = 640;
+            mmi->ptMinTrackSize.y = 420;
             return 0;
         }
         case WM_SIZE:

@@ -791,3 +791,13 @@ No source changes in this entry (self-referential; its own hash is in git log).
 - **Drag-and-drop & CLI open:** enabled `DragAcceptFiles` + `WM_DROPFILES` handler, and wired `wWinMain` `cmdLine` to open a file path passed at launch.
 
 **Verification:** MSVC build 0 warnings/0 errors (both targets); `pr_selftest.exe` 117 checks, 0 FAIL; GUI smoke launched `paintrebuild.exe` (`alive=True`).
+
+## 2026-11-28 — Session 46 — Paste canvas auto-expand and minimum window track size
+
+**Request:** "proceed"
+
+**Change:** added two remaining Paint shell behaviors in `src/app/main.cpp`:
+- **Paste auto-expand (`case 204`):** when pasting an image from the system clipboard that is larger than the current canvas, the canvas expands to `max(width, pasted.width)` × `max(height, pasted.height)` inside the same undoable `SnapshotOperation` before blitting.
+- **Minimum window size (`WM_GETMINMAXINFO`):** enforced a `640×420` minimum track size so the left sliders and status bar never collapse.
+
+**Verification:** MSVC build 0 warnings/0 errors (both targets); `pr_selftest.exe` 117 checks, 0 FAIL; GUI smoke launched `paintrebuild.exe` (`alive=True`).
