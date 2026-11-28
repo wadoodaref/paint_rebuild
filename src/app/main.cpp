@@ -1457,6 +1457,21 @@ void DoCommand(WORD id) {
         case 100: NewDocument(800, 600); SetTitle(); break;
         case 101: SelectFile(false); break;
         case 102:
+            if (!g.filePath.empty()) {
+                const bool written = (DetectFormat(g.filePath) == ImageFormat::Bmp)
+                                         ? SaveBmp(*g.image, g.filePath)
+                                         : SaveImageWic(*g.image, g.filePath);
+                if (written) {
+                    g.stock.MarkSaved();
+                    ClearRecovery(FindLatestRecovery());
+                    SetTitle();
+                } else {
+                    MessageBoxW(g.hwnd, L"The image could not be saved.", L"PaintRebuild", MB_OK);
+                }
+            } else {
+                SelectFile(true);
+            }
+            break;
         case 103: SelectFile(true); break;
         case 104: PostQuitMessage(0); break;
         case 105: SetAsWallpaper(g.image.get(), false); break;
@@ -1913,12 +1928,14 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam) 
                     case 'A': DoCommand(206); return 0;
                     case 'N': DoCommand(100); return 0;
                     case 'O': DoCommand(101); return 0;
-                    case 'S': DoCommand(103); return 0;
+                    case 'S': DoCommand(102); return 0;
                     case VK_OEM_PLUS: case VK_ADD: g.zoom = std::min(16, g.zoom * 2); InvalidateRect(hwnd, nullptr, TRUE); return 0;
                     case VK_OEM_MINUS: case VK_SUBTRACT: g.zoom = std::max(1, g.zoom / 2); InvalidateRect(hwnd, nullptr, TRUE); return 0;
                     case '0': g.zoom = 1; InvalidateRect(hwnd, nullptr, TRUE); return 0;
                     default: break;
                 }
+            } else if (wParam == VK_ESCAPE && g_textEdit) {
+                FinishTextEditor(false);
             } else if (wParam == VK_ESCAPE && IsFullScreen()) {
                 ToggleFullScreen(hwnd);
             } else if (wParam == VK_ESCAPE && g.tool) {
@@ -1926,9 +1943,19 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam) 
                 g.drawing = false;
                 InvalidateRect(hwnd, nullptr, TRUE);
             } else if (wParam == VK_DELETE) {
-                DoCommand(205);
+                const Rect sel = g.tool ? g.tool->SelectionRect() : Rect{};
+                if (sel.w > 0 && sel.h > 0) {
+                    WholeImageOperation(OperationKind::Erase, [&](Image& image) {
+                        image.FillRect(sel, g.background);
+                    });
+                } else {
+                    DoCommand(205);
+                }
             } else if (g.tool) {
                 g.tool->OnKeyDown(static_cast<unsigned>(wParam));
+                g.drawing = g.tool->IsDrawing();
+                SetTitle();
+                InvalidateRect(hwnd, nullptr, TRUE);
             }
             return 0;
         }

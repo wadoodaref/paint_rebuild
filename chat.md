@@ -770,3 +770,14 @@ No source changes in this entry (self-referential; its own hash is in git log).
 - **Status bar (`DrawStatus`):** added vertical dividers between cursor position, selection size, and canvas dimensions; switched zoom slider track/fill to `RoundRect` matching the left panel sliders; replaced remaining hardcoded RGB literals in `DrawLeftPanel`, `DrawStatus`, and `DrawRuler` with `ui_theme::*` tokens.
 
 **Verification:** MSVC build 0 warnings/0 errors (both targets); `pr_selftest.exe` 117 checks, 0 FAIL; GUI smoke launched `PaintRebuild - Untitled` (`alive=True`).
+
+## 2026-11-28 — Session 44 — Save-in-place, Delete-selection, and Text/Polygon key handling
+
+**Request:** "proceed"
+
+**Change:** fixed three Paint workflow behaviors in `src/app/main.cpp`:
+- **Save (`case 102`, `Ctrl+S`):** `File > Save` and `Ctrl+S` now save directly to `g.filePath` when a path is already open (clearing recovery and marking the operation stock saved), falling back to `Save As` only when `g.filePath` is empty.
+- **`Delete` with selection (`WM_KEYDOWN` `VK_DELETE`):** erases only the active selection rectangle with `g.background` as an undoable `OperationKind::Erase`, clearing the whole image only when no selection is active.
+- **Text `Esc` & Polygon `Enter`:** `Esc` cancels an open in-place text editor without committing; `OnKeyDown` updates `g.drawing`, title, and repaints so closing a `Polygon` with `Enter` refreshes immediately.
+
+**Verification:** MSVC build 0 warnings/0 errors (both targets); `pr_selftest.exe` 117 checks, 0 FAIL; GUI smoke launched `paintrebuild.exe` (`alive=True`).
