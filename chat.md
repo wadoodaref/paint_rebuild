@@ -846,3 +846,17 @@ source title-bar format.
 
 **Commit:** fe020c6b7917868239969c5b1a456b4fff1a87f1
 
+
+
+## 2026-11-28 - Session 51 - Win32 scrollbars for canvas viewport
+
+**Change:** added `WS_HSCROLL|WS_VSCROLL`, `UpdateScrollBars()`, and
+`WM_HSCROLL`/`WM_VSCROLL` handlers so the canvas viewport shows standard Win32
+scrollbars when zoomed/canvas exceeds the viewport (Paint workflow fidelity).
+`ClampScroll()` now updates scroll info.
+
+**Verification:** MSVC build 0 warnings/0 errors (both targets); `pr_selftest.exe`
+117 checks, 0 FAIL; GUI smoke launched `Untitled - PaintRebuild`.
+
+**Commit:** 2e7429c9e5dc54a0f7b6d57df91b13a589ea1d5f
+

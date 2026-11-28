@@ -232,6 +232,20 @@ RECT ViewportRect() {
                 std::max<LONG>(ws.top + margin + 13, ws.bottom - 12)};
 }
 
+void UpdateScrollBars() {
+    if (!g.hwnd || !g.image) return;
+    const RECT vp = ViewportRect();
+    const int vw = std::max(0, static_cast<int>(vp.right - vp.left));
+    const int vh = std::max(0, static_cast<int>(vp.bottom - vp.top));
+    const int dw = g.image->width() * g.zoom;
+    const int dh = g.image->height() * g.zoom;
+    SCROLLINFO si{sizeof(SCROLLINFO), SIF_RANGE | SIF_PAGE | SIF_POS | SIF_DISABLENOSCROLL, 0, 0, 0, 0, 0};
+    si.nMax = dw; si.nPage = static_cast<UINT>(vw); si.nPos = g_scrollX;
+    SetScrollInfo(g.hwnd, SB_HORZ, &si, TRUE);
+    si.nMax = dh; si.nPage = static_cast<UINT>(vh); si.nPos = g_scrollY;
+    SetScrollInfo(g.hwnd, SB_VERT, &si, TRUE);
+}
+
 void ClampScroll() {
     if (!g.hwnd || !g.image) return;
     const RECT vp = ViewportRect();
@@ -243,6 +257,7 @@ void ClampScroll() {
     const int maxY = std::max(0, dh - vh);
     g_scrollX = std::max(0, std::min(maxX, g_scrollX));
     g_scrollY = std::max(0, std::min(maxY, g_scrollY));
+    UpdateScrollBars();
 }
 
 RECT CanvasRect() {
@@ -2043,7 +2058,27 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam) 
             mmi->ptMinTrackSize.y = 420;
             return 0;
         }
+        case WM_HSCROLL:
+        case WM_VSCROLL: {
+            SCROLLINFO si{sizeof(SCROLLINFO), SIF_ALL, 0,0,0,0,0};
+            const int bar = (message == WM_HSCROLL) ? SB_HORZ : SB_VERT;
+            GetScrollInfo(hwnd, bar, &si);
+            int pos = si.nPos;
+            switch (LOWORD(wParam)) {
+                case SB_LINELEFT: pos -= 20; break;
+                case SB_LINERIGHT: pos += 20; break;
+                case SB_PAGELEFT: pos -= static_cast<int>(si.nPage); break;
+                case SB_PAGERIGHT: pos += static_cast<int>(si.nPage); break;
+                case SB_THUMBTRACK: case SB_THUMBPOSITION: pos = si.nTrackPos; break;
+                default: break;
+            }
+            if (bar == SB_HORZ) g_scrollX = pos; else g_scrollY = pos;
+            ClampScroll();
+            InvalidateRect(hwnd, nullptr, FALSE);
+            return 0;
+        }
         case WM_SIZE:
+            ClampScroll();
             InvalidateRect(hwnd, nullptr, TRUE);
             return 0;
         case WM_CLOSE:
@@ -2074,7 +2109,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR cmdLine, int show) {
     wc.hbrBackground = reinterpret_cast<HBRUSH>(COLOR_WINDOW + 1);
     RegisterClassW(&wc);
     HWND hwnd = CreateWindowExW(0, L"PaintRebuildWindow", L"Untitled - PaintRebuild",
-                                WS_OVERLAPPEDWINDOW | WS_CLIPCHILDREN,
+                                WS_OVERLAPPEDWINDOW | WS_CLIPCHILDREN | WS_HSCROLL | WS_VSCROLL,
                                 CW_USEDEFAULT, CW_USEDEFAULT, 1340, 820,
                                 nullptr, nullptr, instance, nullptr);
     if (!hwnd) {
