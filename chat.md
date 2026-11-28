@@ -760,3 +760,13 @@ No source changes in this entry (self-referential; its own hash is in git log).
 - **Style & spacing (`DrawCmdBtn`):** shifted compact horizontal button text to `r.left + 24` so it no longer overlaps the 16px icon, and replaced the remaining hardcoded chevron RGBs with `ui_theme::kGroupText` / `ui_theme::kDisabledText`.
 
 **Verification:** MSVC build 0 warnings/0 errors (both targets); `pr_selftest.exe` 117 checks, 0 FAIL; GUI smoke launched `paintrebuild.exe` (`alive=True`).
+
+## 2026-11-28 — Session 43 — Status bar dividers, rounded zoom track, lasso preview, theme cleanup
+
+**Request:** "proceed"
+
+**Change:** finished remaining UI polish in `src/app/main.cpp`:
+- **Free-form selection preview (`DrawCanvas`):** draws the `FreeFormSelectionTool::Points()` lasso polyline with `ui_theme::kSliderFill` while dragging, alongside the bounding selection marquee.
+- **Status bar (`DrawStatus`):** added vertical dividers between cursor position, selection size, and canvas dimensions; switched zoom slider track/fill to `RoundRect` matching the left panel sliders; replaced remaining hardcoded RGB literals in `DrawLeftPanel`, `DrawStatus`, and `DrawRuler` with `ui_theme::*` tokens.
+
+**Verification:** MSVC build 0 warnings/0 errors (both targets); `pr_selftest.exe` 117 checks, 0 FAIL; GUI smoke launched `PaintRebuild - Untitled` (`alive=True`).

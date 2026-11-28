@@ -346,6 +346,20 @@ void DrawCanvas(HDC hdc, const RECT& canvas) {
 
     if (g.tool && (g.tool->Kind() == PaintToolKind::Selection ||
                    g.tool->Kind() == PaintToolKind::FreeFormSelection)) {
+        if (auto* ff = dynamic_cast<FreeFormSelectionTool*>(g.tool.get())) {
+            const auto& pts = ff->Points();
+            if (pts.size() >= 2) {
+                std::vector<POINT> screenPts;
+                screenPts.reserve(pts.size());
+                for (const auto& pt : pts)
+                    screenPts.push_back(POINT{canvas.left + pt.x * g.zoom, canvas.top + pt.y * g.zoom});
+                HPEN lpen = CreatePen(PS_DOT, 1, ui_theme::kSliderFill);
+                HGDIOBJ oldPen = SelectObject(hdc, lpen);
+                Polyline(hdc, screenPts.data(), static_cast<int>(screenPts.size()));
+                SelectObject(hdc, oldPen);
+                DeleteObject(lpen);
+            }
+        }
         const Rect r = g.tool->SelectionRect();
         if (r.w > 0 && r.h > 0) {
             const int left = canvas.left + r.x * g.zoom;
@@ -807,7 +821,7 @@ void DrawLeftPanel(HDC hdc) {
     int thickness = 1;
     g.attributes.GetValue(1, thickness);
     SetBkMode(hdc, TRANSPARENT);
-    SetTextColor(hdc, RGB(80, 80, 80));
+    SetTextColor(hdc, ui_theme::kGroupText);
 
     RECT sl{2, G.sy1 - 20, kLeftPanelWidth - 2, G.sy1 - 4};
     DrawTextW(hdc, L"Size", -1, &sl, DT_CENTER | DT_SINGLELINE);
@@ -882,12 +896,14 @@ void DrawStatus(HDC hdc) {
                             std::to_wstring(g.image->height()) + L"px";
         TextOutW(hdc, 240, top + 8, size.c_str(), static_cast<int>(size.size()));
     }
+    DrawVSeparator(hdc, 114, top - 2, client.bottom + 2);
+    DrawVSeparator(hdc, 230, top - 2, client.bottom + 2);
 
     const StatusGeom S = GetStatusGeom(client);
     auto drawSBtn = [&](const RECT& r, const char* icon, const wchar_t* fallback, bool hov) {
         if (hov) {
-            HBRUSH hb = CreateSolidBrush(RGB(228, 228, 228));
-            HPEN hp = CreatePen(PS_SOLID, 1, ui_theme::kSliderTrack);
+            HBRUSH hb = CreateSolidBrush(ui_theme::kBtnHover);
+            HPEN hp = CreatePen(PS_SOLID, 1, ui_theme::kDivider);
             HGDIOBJ ohp = SelectObject(hdc, hp);
             HGDIOBJ ohb = SelectObject(hdc, hb);
             RoundRect(hdc, r.left, r.top, r.right, r.bottom, 4, 4);
@@ -914,11 +930,23 @@ void DrawStatus(HDC hdc) {
     const int cy = (S.slider.top + S.slider.bottom) / 2;
     const int zx = sl + (g.zoom - 1) * (sr - sl) / 15;
     HBRUSH trk = CreateSolidBrush(ui_theme::kSliderTrack);
-    FillRectValue(hdc, RECT{sl, cy - 2, sr, cy + 2}, trk);
+    HPEN trkp = CreatePen(PS_SOLID, 1, ui_theme::kSliderTrack);
+    HGDIOBJ op0 = SelectObject(hdc, trkp);
+    HGDIOBJ ob0 = SelectObject(hdc, trk);
+    RoundRect(hdc, sl, cy - 2, sr, cy + 2, 4, 4);
+    SelectObject(hdc, ob0);
+    SelectObject(hdc, op0);
+    DeleteObject(trkp);
     DeleteObject(trk);
     if (zx > sl) {
         HBRUSH fl = CreateSolidBrush(ui_theme::kSliderFill);
-        FillRectValue(hdc, RECT{sl, cy - 2, zx, cy + 2}, fl);
+        HPEN flp = CreatePen(PS_SOLID, 1, ui_theme::kSliderFill);
+        op0 = SelectObject(hdc, flp);
+        ob0 = SelectObject(hdc, fl);
+        RoundRect(hdc, sl, cy - 2, zx, cy + 2, 4, 4);
+        SelectObject(hdc, ob0);
+        SelectObject(hdc, op0);
+        DeleteObject(flp);
         DeleteObject(fl);
     }
     HBRUSH tho = CreateSolidBrush(RGB(255, 255, 255));
@@ -955,7 +983,7 @@ void DrawRuler(HDC hdc, const RECT& canvas) {
     FillRectValue(hdc, RECT{ws.left, ws.top, ws.left + kRulerSize, ws.bottom}, face);
     DeleteObject(face);
 
-    HPEN border = CreatePen(PS_SOLID, 1, RGB(212, 212, 212));
+    HPEN border = CreatePen(PS_SOLID, 1, ui_theme::kDivider);
     HGDIOBJ old = SelectObject(hdc, border);
     MoveToEx(hdc, ws.left, ws.top + kRulerSize - 1, nullptr);
     LineTo(hdc, ws.right, ws.top + kRulerSize - 1);
