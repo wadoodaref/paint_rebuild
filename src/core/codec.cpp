@@ -30,7 +30,7 @@ std::uint32_t GetU32(const std::vector<std::uint8_t>& bytes, std::size_t at) {
 }
 
 bool ReadWholeFile(const std::wstring& path, std::vector<std::uint8_t>& bytes) {
-    std::ifstream file(path, std::ios::binary);
+    std::ifstream file(path.c_str(), std::ios::binary);
     if (!file) return false;
     file.seekg(0, std::ios::end);
     const std::streamoff length = file.tellg();
@@ -104,7 +104,7 @@ bool SaveBmp(const Image& image, const std::wstring& path) {
         }
     }
 
-    std::ofstream file(path, std::ios::binary);
+    std::ofstream file(path.c_str(), std::ios::binary);
     if (!file) return false;
     file.write(reinterpret_cast<const char*>(bytes.data()),
                static_cast<std::streamsize>(bytes.size()));

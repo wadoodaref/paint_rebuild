@@ -615,3 +615,17 @@ consistent Paint 11-like typography.
 - **Selftests (`src/tests/selftest.cpp`):** added `TestFidelityTools()` and `RightTriangle` coverage (`113 checks, 0 FAIL`).
 
 **Verification:** MSVC build 0 warnings/0 errors (both targets); `pr_selftest.exe` 113 checks, 0 FAIL; GUI smoke launched `PaintRebuild - Untitled` (`alive=True`).
+
+## 2026-11-28 - Session 36 - Restore MinGW-w64 build on this machine
+
+**Request:** continue the main project (`paint_rebuild`); a UI fidelity check first required a working local build.
+
+**Change:** this machine has no MSVC installation and no prebuilt binaries, so the documented MSVC auto-detection fell through to the portable MinGW-w64 toolchain. Two portability defects blocked it:
+- `src/core/codec.cpp`: `std::ifstream`/`std::ofstream` were constructed from `std::wstring`; GCC 16 only accepts the wide-character overload through `c_str()`, so BMP I/O failed to compile. Both call sites now use `path.c_str()`.
+- `build.ps1`: `-municode` (which makes MinGW link against `wWinMain`) was applied to the console self-test whose entry point is `main`. The flag is now applied only to the GUI app target.
+
+**Decision/rationale:** minimal, toolchain-neutral fixes; `path.c_str()` works unchanged on MSVC, and MSVC builds are untouched.
+
+**Verification:** `powershell -ExecutionPolicy Bypass -File build.ps1 -Verbose` now builds both targets with MinGW-w64 (two benign warnings: MSVC-only `#pragma comment` in `icons.cpp`, unused `kPalette` in `main.cpp`); `pr_selftest.exe` reports 113 checks, 0 FAIL. GUI smoke launched `PaintRebuild - Untitled` successfully, which exposed the UI defects audited in the next session.
+
+**Commit:** 5f19a65
