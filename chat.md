@@ -977,3 +977,16 @@ instead of per-function one-off fonts; fonts are released at exit.
 
 **Commit:** cba0f9521432614ad59ae43c136a7ab4c5db6fc6
 
+
+
+## 2026-11-28 - Session 60 - Sibling workspace and ruler neutrals
+
+**Change:** completed the sibling-token pass by moving the canvas workspace to
+Windows-app #E8E8E8 and the ruler face to #F0F0F0 (both from WordRebuild v2's
+measured tokens), complementing the two-step canvas shadow adopted in Session 58.
+
+**Verification:** MSVC build 0 warnings/0 errors (both targets); `pr_selftest.exe`
+117 checks, 0 FAIL; GUI smoke launched `Untitled - PaintRebuild`.
+
+**Commit:** 4f0e5274e864f7e9da5f84d10f2937a6dab0ee1f
+

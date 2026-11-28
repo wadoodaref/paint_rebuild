@@ -36,11 +36,11 @@ constexpr COLORREF kSliderTrack      = RGB(205, 205, 205);
 constexpr COLORREF kSliderFill       = RGB(0, 95, 184);     // #005FB8 (from Paint 11 SVGs)
 
 // Workspace and status bar.
-constexpr COLORREF kWorkspaceBg      = RGB(238, 238, 238);
+constexpr COLORREF kWorkspaceBg      = RGB(232, 232, 232);  // #E8E8E8 (sibling workspace)
 constexpr COLORREF kStatusBg         = RGB(245, 245, 245);  // #F5F5F5
 constexpr COLORREF kStatusText       = RGB(36, 36, 36);     // #242424 (sibling status ink)
 constexpr COLORREF kStatusHover      = RGB(225, 225, 225);  // sibling status hover
-constexpr COLORREF kRulerFace        = RGB(246, 246, 246);
+constexpr COLORREF kRulerFace        = RGB(240, 240, 240);  // #F0F0F0 (sibling ruler)
 constexpr COLORREF kRulerTick        = RGB(128, 128, 128);  // sibling ruler tick
 constexpr COLORREF kRulerText        = RGB(90, 90, 90);     // sibling ruler number
 
