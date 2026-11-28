@@ -696,7 +696,7 @@ differences, no-outline behaviour, deterministic pixels and fill blending.
 **Verification:** MinGW-w64 build 0 warnings / 0 errors; `pr_selftest.exe` 117
 checks, 0 FAIL; GUI smoke launched `PaintRebuild - Untitled` (`alive=True`).
 
-**Commit:** ddad7ca
+**Commit:** 5871bdf (after log-amend; pre-amend hash ddad7ca)
 
 ## 2026-11-28 - Log correction - commit hashes after --amend
 
