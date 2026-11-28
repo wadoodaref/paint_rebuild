@@ -35,10 +35,10 @@ namespace {
 // Paint 11 layout (from UIA observation, 2026-11-27): top command bar with
 // grouped sections, left vertical sliders, bottom status bar.  Excluded from
 // the reference layout: Copilot, Layers, BG removal, Share, sign-in (cloud/AI).
-constexpr int kCommandBarHeight = 112;
+constexpr int kCommandBarHeight = 108;
 constexpr int kStatusHeight = 32;
-constexpr int kLeftPanelWidth = 46;
-constexpr int kSliderHeight = 180;
+constexpr int kLeftPanelWidth = 52;
+constexpr int kRulerSize = 20;
 
 bool g_commandBarVisible = true;
 bool g_rulerVisible = false;
@@ -47,6 +47,12 @@ bool HitRect(const RECT& r, int x, int y) {
     return x >= r.left && x < r.right && y >= r.top && y < r.bottom;
 }
 
+struct GroupLayout {
+    const wchar_t* name = nullptr;
+    int left = 0;
+    int right = 0;
+};
+
 struct CommandButton {
     RECT rect{};
     int command = 0;
@@ -54,9 +60,11 @@ struct CommandButton {
     const char* icon = nullptr;  // assets/icons/<icon>
     bool toggle = false;
     bool dropdown = false;
+    bool enabled = true;
 };
 
 struct CommandLayout {
+    std::vector<GroupLayout> groups;
     std::vector<CommandButton> buttons;
     RECT color1{};
     RECT color2{};
@@ -64,25 +72,22 @@ struct CommandLayout {
     std::vector<RECT> palette;
     RECT shapeGrid{};
     std::vector<CommandButton> shapeButtons;
-    RECT brushMinus{};
-    RECT brushPlus{};
-    RECT zoomMinus{};
-    RECT zoomPlus{};
-    RECT zoomSlider{};
-    RECT sizeSlider{};
-    RECT opacitySlider{};
-    RECT fitButton{};
 };
 
 int CommandBarTop() { return 0; }  // below Win32 menu bar, in client coords
 
-RECT ColorSwatchRect(int index) {
-    // 10 columns x 2 rows, in the Colors group
-    const int col = index % 10;
-    const int row = index / 10;
-    const int x = 0; const int y = 0; (void)x; (void)y; (void)col; (void)row;
-    return RECT{};
-}
+int g_activeColorSlot = 1;  // 1 = Color 1 (foreground), 2 = Color 2 (background)
+int g_hoverCmd = 0;
+int g_hoverShapeIdx = -1;
+int g_hoverPaletteIdx = -1;
+bool g_hoverColor1 = false;
+bool g_hoverColor2 = false;
+bool g_hoverEditColors = false;
+int g_hoverStatusPart = 0;  // 1=fit, 2=zoom-, 3=zoom+
+int g_dragControl = 0;      // 1=size slider, 2=opacity slider, 3=zoom slider
+int g_scrollX = 0;
+int g_scrollY = 0;
+int g_opacityPercent = 100;
 
 struct AppState {
     std::unique_ptr<Image> image;
@@ -166,6 +171,7 @@ void RebuildTool() {
         if (g.attributes.GetValue(1, thickness)) g.tool->SetThickness(thickness);
         double tolerance = 0.0;
         if (g.attributes.GetValue(2, tolerance)) g.tool->SetTolerance(tolerance);
+        g.tool->SetOpacity(g_opacityPercent / 100.0);
     }
 }
 
@@ -199,12 +205,44 @@ void WholeImageOperation(OperationKind kind, const std::function<void(Image&)>& 
 
 int CommandBarHeight() { return g_commandBarVisible ? kCommandBarHeight : 0; }
 
-RECT CanvasRect() {
+RECT WorkspaceRect() {
     RECT client;
     GetClientRect(g.hwnd, &client);
-    const int top = CommandBarHeight() + 4;
-    const int left = kLeftPanelWidth + 4;
-    return RECT{left, top, client.right - 4, client.bottom - kStatusHeight - 4};
+    return RECT{kLeftPanelWidth, CommandBarHeight(), client.right,
+                std::max<LONG>(CommandBarHeight(), client.bottom - kStatusHeight)};
+}
+
+RECT ViewportRect() {
+    const RECT ws = WorkspaceRect();
+    const int margin = g_rulerVisible ? kRulerSize : 0;
+    return RECT{ws.left + margin + 12, ws.top + margin + 12,
+                std::max<LONG>(ws.left + margin + 13, ws.right - 12),
+                std::max<LONG>(ws.top + margin + 13, ws.bottom - 12)};
+}
+
+void ClampScroll() {
+    if (!g.hwnd || !g.image) return;
+    const RECT vp = ViewportRect();
+    const int vw = vp.right - vp.left;
+    const int vh = vp.bottom - vp.top;
+    const int dw = g.image->width() * g.zoom;
+    const int dh = g.image->height() * g.zoom;
+    const int maxX = std::max(0, dw - vw);
+    const int maxY = std::max(0, dh - vh);
+    g_scrollX = std::max(0, std::min(maxX, g_scrollX));
+    g_scrollY = std::max(0, std::min(maxY, g_scrollY));
+}
+
+RECT CanvasRect() {
+    const RECT vp = ViewportRect();
+    const int vw = vp.right - vp.left;
+    const int vh = vp.bottom - vp.top;
+    const int dw = g.image ? g.image->width() * g.zoom : 0;
+    const int dh = g.image ? g.image->height() * g.zoom : 0;
+    ClampScroll();
+    const int left = (dw <= vw) ? (vp.left + (vw - dw) / 2) : (vp.left - g_scrollX);
+    const int top = (dh <= vh) ? (vp.top + (vh - dh) / 2) : (vp.top - g_scrollY);
+    return RECT{left, top, left + dw, top + dh};
 }
 
 pr::Point ToImagePoint(int x, int y) {
@@ -309,61 +347,73 @@ void DrawCanvas(HDC hdc, const RECT& canvas) {
     }
 }
 
-struct GroupLayout {
-    const wchar_t* name = nullptr;
-    int left = 0;
-    int right = 0;
-};
-
-static void DrawGroupLabel(HDC hdc, const GroupLayout& g_, int top, int barH) {
-    SetBkMode(hdc, TRANSPARENT);
-    SetTextColor(hdc, RGB(60, 60, 60));
-    RECT r{g_.left, top + barH - 18, g_.right, top + barH - 2};
-    DrawTextW(hdc, g_.name, -1, &r, DT_CENTER | DT_SINGLELINE | DT_VCENTER);
-}
-
 static void DrawVSeparator(HDC hdc, int x, int top, int bottom) {
-    HPEN pen = CreatePen(PS_SOLID, 1, RGB(210, 210, 210));
+    HPEN pen = CreatePen(PS_SOLID, 1, RGB(218, 218, 218));
     HGDIOBJ old = SelectObject(hdc, pen);
-    MoveToEx(hdc, x, top + 6, nullptr);
-    LineTo(hdc, x, bottom - 6);
+    MoveToEx(hdc, x, top + 8, nullptr);
+    LineTo(hdc, x, bottom - 8);
     SelectObject(hdc, old);
     DeleteObject(pen);
 }
 
 static void DrawCmdBtn(HDC hdc, const RECT& r, const char* icon, const wchar_t* label,
-                       bool selected, bool iconOnly, bool dropdown = false) {
-    COLORREF bg = selected ? RGB(204, 228, 247) : RGB(243, 243, 243);
+                       bool selected, bool hovered, bool iconOnly, bool dropdown = false,
+                       bool enabled = true) {
+    COLORREF bg = selected ? RGB(204, 228, 247)
+                           : (hovered && enabled ? RGB(232, 232, 232) : RGB(243, 243, 243));
+    COLORREF border = selected ? RGB(0, 120, 215)
+                               : (hovered && enabled ? RGB(212, 212, 212) : bg);
     HBRUSH br = CreateSolidBrush(bg);
-    HPEN pen = CreatePen(PS_SOLID, 1, selected ? RGB(153, 209, 255) : RGB(243, 243, 243));
+    HPEN pen = CreatePen(PS_SOLID, 1, border);
     HGDIOBJ oldPen = SelectObject(hdc, pen);
     HGDIOBJ oldBr = SelectObject(hdc, br);
     RoundRect(hdc, r.left, r.top, r.right, r.bottom, 6, 6);
-    SelectObject(hdc, oldBr); SelectObject(hdc, oldPen);
-    DeleteObject(br); DeleteObject(pen);
+    SelectObject(hdc, oldBr);
+    SelectObject(hdc, oldPen);
+    DeleteObject(br);
+    DeleteObject(pen);
+
+    const int bw = r.right - r.left;
+    const int bh = r.bottom - r.top;
+    const bool compactHoriz = (!iconOnly && bh <= 40);
+
     if (icon) {
         if (Image* img = GetIcon(icon)) {
-            const int isz = iconOnly ? 24 : 20;
-            const int ix = r.left + (r.right - r.left - isz) / 2;
-            const int iy = r.top + (iconOnly ? (r.bottom - r.top - isz) / 2 : 4);
-            DrawToolIcon(hdc, *img, ix, iy, isz);
+            if (compactHoriz) {
+                const int isz = 16;
+                DrawToolIcon(hdc, *img, r.left + 6, r.top + (bh - isz) / 2, isz);
+            } else {
+                const int isz = iconOnly ? 20 : 24;
+                const int ix = r.left + (bw - isz) / 2;
+                const int iy = r.top + (iconOnly ? (bh - isz) / 2 : 10);
+                DrawToolIcon(hdc, *img, ix, iy, isz);
+            }
         }
     }
     if (label && !iconOnly) {
         SetBkMode(hdc, TRANSPARENT);
-        SetTextColor(hdc, RGB(32,32,32));
-        RECT tr{r.left, r.top + 24, r.right - (dropdown ? 10 : 0), r.bottom - 1};
-        DrawTextW(hdc, label, -1, &tr, DT_CENTER | DT_SINGLELINE | DT_VCENTER);
+        SetTextColor(hdc, enabled ? RGB(32, 32, 32) : RGB(150, 150, 150));
+        if (compactHoriz) {
+            RECT tr{r.left + 25, r.top, r.right - (dropdown ? 12 : 4), r.bottom};
+            DrawTextW(hdc, label, -1, &tr, DT_LEFT | DT_SINGLELINE | DT_VCENTER);
+        } else {
+            RECT tr{r.left + 2, r.top + 38, r.right - 2, r.bottom - 4};
+            DrawTextW(hdc, label, -1, &tr, DT_CENTER | DT_SINGLELINE | DT_VCENTER);
+        }
     }
     if (dropdown) {
-        const int cx = r.right - 10, cy = r.bottom - 10;
-        POINT pts[3] = {{cx-3, cy-1}, {cx+3, cy-1}, {cx, cy+2}};
-        HBRUSH ar = CreateSolidBrush(RGB(80,80,80));
-        HPEN ap = CreatePen(PS_SOLID, 1, RGB(80,80,80));
-        HGDIOBJ oa = SelectObject(hdc, ar); HGDIOBJ op = SelectObject(hdc, ap);
+        const int cx = compactHoriz ? (r.right - 8) : (r.right - 8);
+        const int cy = compactHoriz ? (r.top + bh / 2) : (r.top + 52);
+        POINT pts[3] = {{cx - 3, cy - 1}, {cx + 3, cy - 1}, {cx, cy + 2}};
+        HBRUSH ar = CreateSolidBrush(enabled ? RGB(80, 80, 80) : RGB(160, 160, 160));
+        HPEN ap = CreatePen(PS_SOLID, 1, enabled ? RGB(80, 80, 80) : RGB(160, 160, 160));
+        HGDIOBJ oa = SelectObject(hdc, ar);
+        HGDIOBJ op = SelectObject(hdc, ap);
         Polygon(hdc, pts, 3);
-        SelectObject(hdc, op); SelectObject(hdc, oa);
-        DeleteObject(ap); DeleteObject(ar);
+        SelectObject(hdc, op);
+        SelectObject(hdc, oa);
+        DeleteObject(ap);
+        DeleteObject(ar);
     }
 }
 
@@ -373,49 +423,73 @@ CommandLayout BuildCommandLayout() {
     int x = 8;
 
     auto addBtn = [&](int bx, int by, int bw, int bh, int cmd, const wchar_t* label,
-                      const char* icon, bool sel = false, bool iconOnly = false, bool dropdown = false) {
+                      const char* icon, bool sel = false, bool dropdown = false,
+                      bool enabled = true) {
         CommandButton b;
         b.rect = RECT{bx, by, bx + bw, by + bh};
-        b.command = cmd; b.label = label; b.icon = icon; b.toggle = sel; b.dropdown = dropdown;
+        b.command = cmd;
+        b.label = label;
+        b.icon = icon;
+        b.toggle = sel;
+        b.dropdown = dropdown;
+        b.enabled = enabled;
         L.buttons.push_back(b);
     };
 
-    // Selection group (Paint 11: single Select button)
+    // Selection group
     const int selLeft = x;
-    const bool selActive = (g.toolKind == PaintToolKind::Selection || g.toolKind == PaintToolKind::FreeFormSelection);
-    const char* selIcon = (g.toolKind == PaintToolKind::FreeFormSelection) ? "freeform.png" : "select.png";
-    addBtn(x + 10, top + 8, 56, 62, 9004, L"Select", selIcon, selActive, false, true);
-    x += 76;
+    const bool selActive = (g.toolKind == PaintToolKind::Selection ||
+                            g.toolKind == PaintToolKind::FreeFormSelection);
+    const char* selIcon =
+        (g.toolKind == PaintToolKind::FreeFormSelection) ? "freeform.png" : "select.png";
+    addBtn(x + 6, top + 4, 56, 72, 9004, L"Select", selIcon, selActive, true);
+    x += 68;
+    L.groups.push_back({L"Selection", selLeft, x});
+    x += 6;
 
-    // Image group (matches Paint 11: Crop, Rotate, Flip, Resize and skew; BG removal excluded)
+    // Image group
     const int imgLeft = x;
-    addBtn(x + 6, top + 8, 44, 40, 407, L"Crop", "select.png", false, true);
-    // BG removal slot omitted (AI feature, excluded)
-    addBtn(x + 56, top + 8, 52, 40, 406, L"Rotate", "rotate.png", false, true);
-    addBtn(x + 56, top + 52, 52, 40, 401, L"Flip", "flip.png", false, true);
-    addBtn(x + 114, top + 20, 52, 52, 405, L"Resize", "resize.png", false, true);
-    x += 174;
+    const Rect selRect = g.tool ? g.tool->SelectionRect() : Rect{};
+    const bool hasSel = (selRect.w > 0 && selRect.h > 0);
+    addBtn(x + 4, top + 4, 48, 72, 407, L"Crop", "select.png", false, false, hasSel);
+    addBtn(x + 56, top + 4, 62, 34, 9006, L"Rotate", "rotate.png", false, true);
+    addBtn(x + 56, top + 42, 62, 34, 9005, L"Flip", "flip.png", false, true);
+    addBtn(x + 122, top + 4, 52, 72, 405, L"Resize", "resize.png", false, false);
+    x += 180;
+    L.groups.push_back({L"Image", imgLeft, x});
+    x += 6;
 
-    // Tools group (2 rows x 3) - matches Paint 11 exactly
+    // Tools group (2 rows x 3)
     const int toolsLeft = x;
-    const int tx[] = {x + 6, x + 48, x + 90};
-    addBtn(tx[0], top + 8, 38, 38, 806, L"Pencil", "pencil.png", g.toolKind == PaintToolKind::Pencil, true);
-    addBtn(tx[1], top + 8, 38, 38, 803, L"Fill", "fill.png", g.toolKind == PaintToolKind::FloodFill, true);
-    addBtn(tx[2], top + 8, 38, 38, 810, L"Text", "text.png", g.toolKind == PaintToolKind::Text, true);
-    addBtn(tx[0], top + 50, 38, 38, 802, L"Eraser", "eraser.png", g.toolKind == PaintToolKind::Eraser, true);
-    addBtn(tx[1], top + 50, 38, 38, 804, L"Picker", "picker.png", g.toolKind == PaintToolKind::PickColor, true);
-    addBtn(tx[2], top + 50, 38, 38, 805, L"Zoom", "zoom.png", g.toolKind == PaintToolKind::Zoom, true);
-    x += 136;
+    const int tx[] = {x + 4, x + 42, x + 80};
+    addBtn(tx[0], top + 4, 34, 34, 806, nullptr, "pencil.png", g.toolKind == PaintToolKind::Pencil);
+    addBtn(tx[1], top + 4, 34, 34, 803, nullptr, "fill.png", g.toolKind == PaintToolKind::FloodFill);
+    addBtn(tx[2], top + 4, 34, 34, 810, nullptr, "text.png", g.toolKind == PaintToolKind::Text);
+    addBtn(tx[0], top + 42, 34, 34, 802, nullptr, "eraser.png", g.toolKind == PaintToolKind::Eraser);
+    addBtn(tx[1], top + 42, 34, 34, 804, nullptr, "picker.png", g.toolKind == PaintToolKind::PickColor);
+    addBtn(tx[2], top + 42, 34, 34, 805, nullptr, "zoom.png", g.toolKind == PaintToolKind::Zoom);
+    x += 118;
+    L.groups.push_back({L"Tools", toolsLeft, x});
+    x += 6;
 
     // Brushes group
     const int brushLeft = x;
-    addBtn(x + 8, top + 8, 52, 62, 807, L"Brushes", "brush.png",
-           g.toolKind == PaintToolKind::Brush || g.toolKind == PaintToolKind::Airbrush || g.toolKind == PaintToolKind::Calligraphic, false, true);
-    x += 76;
+    const bool brushActive = (g.toolKind == PaintToolKind::Brush ||
+                              g.toolKind == PaintToolKind::Airbrush ||
+                              g.toolKind == PaintToolKind::Calligraphic ||
+                              g.toolKind == PaintToolKind::OilBrush ||
+                              g.toolKind == PaintToolKind::Watercolor ||
+                              g.toolKind == PaintToolKind::Marker ||
+                              g.toolKind == PaintToolKind::Crayon ||
+                              g.toolKind == PaintToolKind::NaturalPencil);
+    addBtn(x + 6, top + 4, 58, 72, 807, L"Brushes", "brush.png", brushActive, true);
+    x += 70;
+    L.groups.push_back({L"Brushes", brushLeft, x});
+    x += 6;
 
-    // Shapes group
+    // Shapes group (8 cols x 3 rows = 24 slots for 23 shapes; fits cleanly above label)
     const int shapesLeft = x;
-    L.shapeGrid = RECT{x + 4, top + 6, x + 224, top + 88};
+    L.shapeGrid = RECT{x + 4, top + 4, x + 212, top + 79};
     static const struct { const char* icon; ShapeKind shape; int cmd; } shapeDefs[] = {
         {"line.png", ShapeKind::Rectangle, 811}, {"curve.png", ShapeKind::Rectangle, 812},
         {"oval.png", ShapeKind::Ellipse, 815}, {"rectangle.png", ShapeKind::Rectangle, 814},
@@ -439,11 +513,13 @@ CommandLayout BuildCommandLayout() {
         {"lightning.png", ShapeKind::Lightning, 600 + (int)ShapeKind::Lightning},
     };
     for (int i = 0; i < 23; ++i) {
-        const int col = i % 7; const int row = i / 7;
+        const int col = i % 8;
+        const int row = i / 8;
         CommandButton sb;
-        sb.rect = RECT{L.shapeGrid.left + col * 31, L.shapeGrid.top + row * 27,
-                       L.shapeGrid.left + col * 31 + 28, L.shapeGrid.top + row * 27 + 24};
-        sb.command = shapeDefs[i].cmd; sb.icon = shapeDefs[i].icon;
+        sb.rect = RECT{L.shapeGrid.left + col * 26, L.shapeGrid.top + row * 25,
+                       L.shapeGrid.left + col * 26 + 24, L.shapeGrid.top + row * 25 + 23};
+        sb.command = shapeDefs[i].cmd;
+        sb.icon = shapeDefs[i].icon;
         if (sb.command == 811) sb.toggle = (g.toolKind == PaintToolKind::Line);
         else if (sb.command == 812) sb.toggle = (g.toolKind == PaintToolKind::Curve);
         else if (sb.command == 813) sb.toggle = (g.toolKind == PaintToolKind::Polygon);
@@ -453,232 +529,438 @@ CommandLayout BuildCommandLayout() {
         else sb.toggle = (g.toolKind == PaintToolKind::AutoShape && g_shapeKind == shapeDefs[i].shape);
         L.shapeButtons.push_back(sb);
     }
-    x += 232;
-    addBtn(x + 4, top + 10, 52, 36, 9001, L"Outline", "shape_outline.png", !g_shapeFilled, false, true);
-    addBtn(x + 4, top + 50, 52, 36, 9002, L"Fill", "shape_fill.png", g_shapeFilled, false, true);
-    x += 64;
+    x += 216;
+    addBtn(x + 2, top + 4, 68, 34, 9001, L"Outline", "shape_outline.png", !g_shapeFilled, true);
+    addBtn(x + 2, top + 42, 68, 34, 9002, L"Fill", "shape_fill.png", g_shapeFilled, true);
+    x += 74;
+    L.groups.push_back({L"Shapes", shapesLeft, x});
+    x += 6;
 
     // Size group
     const int sizeLeft = x;
-    addBtn(x + 6, top + 18, 44, 56, 9003, L"Size", "size.png", false, false, true);
-    x += 60;
+    addBtn(x + 4, top + 4, 48, 72, 9003, L"Size", "size.png", false, true);
+    x += 56;
+    L.groups.push_back({L"Size", sizeLeft, x});
+    x += 6;
 
     // Colors group
     const int colorsLeft = x;
-    L.color1 = RECT{x + 4, top + 10, x + 44, top + 50};
-    L.color2 = RECT{x + 4, top + 54, x + 44, top + 94};
+    L.color1 = RECT{x + 4, top + 4, x + 50, top + 76};
+    L.color2 = RECT{x + 54, top + 4, x + 100, top + 76};
     for (int i = 0; i < 20; ++i) {
-        const int col = i % 10; const int row = i / 10;
-        L.palette.push_back(RECT{x + 54 + col * 22, top + 14 + row * 24,
-                                 x + 54 + col * 22 + 20, top + 14 + row * 24 + 20});
+        const int col = i % 10;
+        const int row = i / 10;
+        L.palette.push_back(RECT{x + 108 + col * 24, top + 12 + row * 28,
+                                 x + 108 + col * 24 + 20, top + 12 + row * 28 + 20});
     }
-    L.editColors = RECT{x + 280, top + 28, x + 322, top + 70};
-    x += 330;
+    L.editColors = RECT{x + 354, top + 4, x + 408, top + 76};
+    x += 414;
+    L.groups.push_back({L"Colors", colorsLeft, x});
 
-    (void)selLeft; (void)imgLeft; (void)toolsLeft; (void)brushLeft;
-    (void)shapesLeft; (void)sizeLeft; (void)colorsLeft;
     return L;
 }
 
 void DrawCommandBar(HDC hdc) {
     if (!g_commandBarVisible) return;
-    RECT client; GetClientRect(g.hwnd, &client);
+    RECT client;
+    GetClientRect(g.hwnd, &client);
     const int top = CommandBarTop();
     const int h = kCommandBarHeight;
-    static HFONT font = CreateFontW(-12, 0,0,0, FW_NORMAL, 0,0,0, DEFAULT_CHARSET, 0,0, CLEARTYPE_QUALITY, 0, L"Segoe UI");
+    static HFONT font = CreateFontW(-12, 0, 0, 0, FW_NORMAL, 0, 0, 0, DEFAULT_CHARSET,
+                                    0, 0, CLEARTYPE_QUALITY, 0, L"Segoe UI");
     HGDIOBJ oldFont = SelectObject(hdc, font);
     HBRUSH bg = CreateSolidBrush(RGB(243, 243, 243));
     FillRectValue(hdc, RECT{0, top, client.right, top + h}, bg);
     DeleteObject(bg);
     HPEN line = CreatePen(PS_SOLID, 1, RGB(218, 218, 218));
     HGDIOBJ oldPen = SelectObject(hdc, line);
-    MoveToEx(hdc, 0, top + h - 1, nullptr); LineTo(hdc, client.right, top + h - 1);
-    SelectObject(hdc, oldPen); DeleteObject(line);
+    MoveToEx(hdc, 0, top + h - 1, nullptr);
+    LineTo(hdc, client.right, top + h - 1);
+    SelectObject(hdc, oldPen);
+    DeleteObject(line);
 
     CommandLayout L = BuildCommandLayout();
     SetBkMode(hdc, TRANSPARENT);
 
-    // Group separators and labels
-    struct GL { const wchar_t* n; int l; int r; } groups[] = {
-        {L"Selection", 8, 84}, {L"Image", 86, 258}, {L"Tools", 260, 394},
-        {L"Brushes", 396, 470}, {L"Shapes", 472, 770}, {L"Size", 772, 830},
-        {L"Colors", 832, 1164},
-    };
-    for (auto& g_ : groups) {
-        DrawVSeparator(hdc, g_.r, top, top + h);
-        RECT lr{g_.l, top + h - 20, g_.r, top + h - 2};
-        SetTextColor(hdc, RGB(70, 70, 70));
-        DrawTextW(hdc, g_.n, -1, &lr, DT_CENTER | DT_SINGLELINE | DT_VCENTER);
+    for (size_t i = 0; i < L.groups.size(); ++i) {
+        const auto& grp = L.groups[i];
+        if (i + 1 < L.groups.size())
+            DrawVSeparator(hdc, grp.right + 2, top, top + h);
+        RECT lr{grp.left, top + h - 22, grp.right, top + h - 4};
+        SetTextColor(hdc, RGB(96, 96, 96));
+        DrawTextW(hdc, grp.name, -1, &lr, DT_CENTER | DT_SINGLELINE | DT_VCENTER);
     }
 
-    for (auto& b : L.buttons) DrawCmdBtn(hdc, b.rect, b.icon, b.label, b.toggle, false, b.dropdown);
-    for (auto& sb : L.shapeButtons) {
-        bool sel = sb.toggle;
-        HBRUSH br = CreateSolidBrush(sel ? RGB(196, 220, 246) : RGB(243, 243, 243));
-        FillRectValue(hdc, sb.rect, br); DeleteObject(br);
-        if (sel) { HPEN p = CreatePen(PS_SOLID, 1, RGB(100,150,220)); HGDIOBJ op=SelectObject(hdc,p); HGDIOBJ ob=SelectObject(hdc,GetStockObject(NULL_BRUSH)); Rectangle(hdc,sb.rect.left,sb.rect.top,sb.rect.right,sb.rect.bottom); SelectObject(hdc,ob); SelectObject(hdc,op); DeleteObject(p); }
-        if (Image* img = GetIcon(sb.icon)) DrawToolIcon(hdc, *img, sb.rect.left + 2, sb.rect.top + 1, 22);
+    for (const auto& b : L.buttons) {
+        const bool iconOnly = (b.label == nullptr);
+        const bool hovered = (g_hoverCmd == b.command && b.command != 0);
+        DrawCmdBtn(hdc, b.rect, b.icon, b.label, b.toggle, hovered, iconOnly, b.dropdown, b.enabled);
     }
 
-    // Colors: Color 1 / Color 2
-    auto drawSwatch = [&](RECT r, Color c, bool sel, const wchar_t* lbl) {
-        HBRUSH br = CreateSolidBrush(sel ? RGB(220,235,250) : RGB(243,243,243));
-        FillRectValue(hdc, r, br); DeleteObject(br);
-        if (sel) { HPEN p=CreatePen(PS_SOLID,2,RGB(0,120,215)); HGDIOBJ op=SelectObject(hdc,p); HGDIOBJ ob=SelectObject(hdc,GetStockObject(NULL_BRUSH)); Rectangle(hdc,r.left,r.top,r.right,r.bottom); SelectObject(hdc,ob); SelectObject(hdc,op); DeleteObject(p); }
-        RECT inner{r.left + 6, r.top + 4, r.right - 6, r.bottom - 16};
+    for (int i = 0; i < static_cast<int>(L.shapeButtons.size()); ++i) {
+        const auto& sb = L.shapeButtons[i];
+        const bool sel = sb.toggle;
+        const bool hov = (g_hoverShapeIdx == i);
+        COLORREF sbg = sel ? RGB(204, 228, 247) : (hov ? RGB(232, 232, 232) : RGB(243, 243, 243));
+        COLORREF sbd = sel ? RGB(0, 120, 215) : (hov ? RGB(212, 212, 212) : sbg);
+        HBRUSH br = CreateSolidBrush(sbg);
+        HPEN p = CreatePen(PS_SOLID, 1, sbd);
+        HGDIOBJ op = SelectObject(hdc, p);
+        HGDIOBJ ob = SelectObject(hdc, br);
+        RoundRect(hdc, sb.rect.left, sb.rect.top, sb.rect.right, sb.rect.bottom, 4, 4);
+        SelectObject(hdc, ob);
+        SelectObject(hdc, op);
+        DeleteObject(p);
+        DeleteObject(br);
+        if (Image* img = GetIcon(sb.icon))
+            DrawToolIcon(hdc, *img, sb.rect.left + 3, sb.rect.top + 2, 18);
+    }
+
+    // Color 1 / Color 2 selectable swatch buttons (Paint 11 style)
+    auto drawActiveColorBtn = [&](const RECT& r, Color c, bool active, bool hovered, const wchar_t* lbl) {
+        COLORREF cbg = active ? RGB(204, 228, 247) : (hovered ? RGB(232, 232, 232) : RGB(243, 243, 243));
+        COLORREF cbd = active ? RGB(0, 120, 215) : (hovered ? RGB(212, 212, 212) : cbg);
+        HBRUSH br = CreateSolidBrush(cbg);
+        HPEN pen = CreatePen(PS_SOLID, 1, cbd);
+        HGDIOBJ op = SelectObject(hdc, pen);
+        HGDIOBJ ob = SelectObject(hdc, br);
+        RoundRect(hdc, r.left, r.top, r.right, r.bottom, 6, 6);
+        SelectObject(hdc, ob);
+        SelectObject(hdc, op);
+        DeleteObject(pen);
+        DeleteObject(br);
+
+        const int cx = (r.left + r.right) / 2;
+        const int cy = r.top + 24;
         HBRUSH cb = CreateSolidBrush(RGB(Red(c), Green(c), Blue(c)));
-        FillRectValue(hdc, inner, cb); DeleteObject(cb);
-        FrameRect(hdc, &inner, static_cast<HBRUSH>(GetStockObject(GRAY_BRUSH)));
-        RECT lr{r.left, r.bottom - 14, r.right, r.bottom};
-        SetTextColor(hdc, RGB(60,60,60));
-        DrawTextW(hdc, lbl, -1, &lr, DT_CENTER | DT_SINGLELINE);
-    };
-    // Overlapping Color 1 / Color 2 like Paint
-    {
-        RECT r2 = L.color2; OffsetRect(&r2, 8, -6);
-        HBRUSH b2 = CreateSolidBrush(RGB(Red(g.background), Green(g.background), Blue(g.background)));
-        FillRectValue(hdc, r2, b2); DeleteObject(b2); FrameRect(hdc, &r2, static_cast<HBRUSH>(GetStockObject(GRAY_BRUSH)));
-        HBRUSH b1 = CreateSolidBrush(RGB(Red(g.foreground), Green(g.foreground), Blue(g.foreground)));
-        FillRectValue(hdc, L.color1, b1); DeleteObject(b1);
-        HPEN sel = CreatePen(PS_SOLID, 2, RGB(0,120,215)); HGDIOBJ op=SelectObject(hdc,sel); HGDIOBJ ob=SelectObject(hdc,GetStockObject(NULL_BRUSH));
-        Rectangle(hdc, L.color1.left, L.color1.top, L.color1.right, L.color1.bottom);
-        SelectObject(hdc,ob); SelectObject(hdc,op); DeleteObject(sel);
-        SetBkMode(hdc, TRANSPARENT); SetTextColor(hdc, RGB(60,60,60));
-        RECT l1{L.color1.left-4, L.color1.bottom, L.color1.right+14, L.color1.bottom+14};
-        DrawTextW(hdc, L"Color 1", -1, &l1, DT_CENTER | DT_SINGLELINE);
-        RECT l2{r2.left-4, r2.bottom, r2.right+14, r2.bottom+14};
-        DrawTextW(hdc, L"Color 2", -1, &l2, DT_CENTER | DT_SINGLELINE);
-    }
+        HPEN cp = CreatePen(PS_SOLID, 1, RGB(150, 150, 150));
+        op = SelectObject(hdc, cp);
+        ob = SelectObject(hdc, cb);
+        Ellipse(hdc, cx - 13, cy - 13, cx + 13, cy + 13);
+        SelectObject(hdc, ob);
+        SelectObject(hdc, op);
+        DeleteObject(cp);
+        DeleteObject(cb);
 
+        RECT lr{r.left, r.top + 44, r.right, r.bottom - 4};
+        SetTextColor(hdc, RGB(32, 32, 32));
+        DrawTextW(hdc, lbl, -1, &lr, DT_CENTER | DT_SINGLELINE | DT_VCENTER);
+    };
+    drawActiveColorBtn(L.color1, g.foreground, g_activeColorSlot == 1, g_hoverColor1, L"Color 1");
+    drawActiveColorBtn(L.color2, g.background, g_activeColorSlot == 2, g_hoverColor2, L"Color 2");
+
+    const Color activeCol = (g_activeColorSlot == 1) ? g.foreground : g.background;
     for (int i = 0; i < 20 && i < static_cast<int>(L.palette.size()); ++i) {
         RECT r = L.palette[i];
-        Color c = (i < 20) ? palette::Paint11Colors[i] : MakeColor(255,255,255);
+        Color c = palette::Paint11Colors[i];
+        const bool match = (Red(c) == Red(activeCol) && Green(c) == Green(activeCol) &&
+                            Blue(c) == Blue(activeCol));
+        const bool hov = (g_hoverPaletteIdx == i);
+        if (match || hov) {
+            HPEN ring = CreatePen(PS_SOLID, match ? 2 : 1, match ? RGB(0, 120, 215) : RGB(150, 150, 150));
+            HGDIOBJ op = SelectObject(hdc, ring);
+            HGDIOBJ ob = SelectObject(hdc, GetStockObject(NULL_BRUSH));
+            Ellipse(hdc, r.left - 2, r.top - 2, r.right + 2, r.bottom + 2);
+            SelectObject(hdc, ob);
+            SelectObject(hdc, op);
+            DeleteObject(ring);
+        }
         HBRUSH cb = CreateSolidBrush(RGB(Red(c), Green(c), Blue(c)));
         HGDIOBJ oldB = SelectObject(hdc, cb);
-        HPEN pen = CreatePen(PS_SOLID, 1, RGB(180,180,180));
+        HPEN pen = CreatePen(PS_SOLID, 1, RGB(180, 180, 180));
         HGDIOBJ oldP = SelectObject(hdc, pen);
         Ellipse(hdc, r.left, r.top, r.right, r.bottom);
-        SelectObject(hdc, oldP); SelectObject(hdc, oldB);
-        DeleteObject(pen); DeleteObject(cb);
+        SelectObject(hdc, oldP);
+        SelectObject(hdc, oldB);
+        DeleteObject(pen);
+        DeleteObject(cb);
     }
-    DrawCmdBtn(hdc, L.editColors, "colors.png", L"Edit", false, false);
+    DrawCmdBtn(hdc, L.editColors, "colors.png", L"Edit", false, g_hoverEditColors, false);
     SelectObject(hdc, oldFont);
 }
 
+struct LeftSliderGeom {
+    int sx = 0;
+    int sy1 = 0, sy2 = 0;
+    int oy1 = 0, oy2 = 0;
+    int sliderH = 0;
+};
+
+LeftSliderGeom GetLeftSliderGeom() {
+    RECT client;
+    GetClientRect(g.hwnd, &client);
+    const int top = CommandBarHeight();
+    const int bottom = std::max<LONG>(top + 120, client.bottom - kStatusHeight);
+    const int avail = bottom - top;
+    const int sliderH = std::max(50, std::min(150, (avail - 116) / 2));
+    LeftSliderGeom G;
+    G.sx = kLeftPanelWidth / 2;
+    G.sliderH = sliderH;
+    G.sy1 = top + 28;
+    G.sy2 = G.sy1 + sliderH;
+    G.oy1 = G.sy2 + 52;
+    G.oy2 = G.oy1 + sliderH;
+    return G;
+}
+
+void DrawVerticalSlider(HDC hdc, int cx, int y1, int y2, double frac) {
+    frac = std::max(0.0, std::min(1.0, frac));
+    const int h = y2 - y1;
+    const int thumbY = y2 - static_cast<int>(frac * h);
+    HBRUSH track = CreateSolidBrush(RGB(205, 205, 205));
+    HPEN tp = CreatePen(PS_SOLID, 1, RGB(205, 205, 205));
+    HGDIOBJ op = SelectObject(hdc, tp);
+    HGDIOBJ ob = SelectObject(hdc, track);
+    RoundRect(hdc, cx - 2, y1, cx + 2, y2, 4, 4);
+    SelectObject(hdc, ob);
+    SelectObject(hdc, op);
+    DeleteObject(tp);
+    DeleteObject(track);
+
+    if (thumbY < y2) {
+        HBRUSH fill = CreateSolidBrush(RGB(0, 120, 215));
+        HPEN fp = CreatePen(PS_SOLID, 1, RGB(0, 120, 215));
+        op = SelectObject(hdc, fp);
+        ob = SelectObject(hdc, fill);
+        RoundRect(hdc, cx - 2, thumbY, cx + 2, y2, 4, 4);
+        SelectObject(hdc, ob);
+        SelectObject(hdc, op);
+        DeleteObject(fp);
+        DeleteObject(fill);
+    }
+
+    HBRUSH outer = CreateSolidBrush(RGB(255, 255, 255));
+    HPEN op2 = CreatePen(PS_SOLID, 1, RGB(180, 180, 180));
+    op = SelectObject(hdc, op2);
+    ob = SelectObject(hdc, outer);
+    Ellipse(hdc, cx - 7, thumbY - 7, cx + 7, thumbY + 7);
+    SelectObject(hdc, ob);
+    SelectObject(hdc, op);
+    DeleteObject(op2);
+    DeleteObject(outer);
+
+    HBRUSH inner = CreateSolidBrush(RGB(0, 120, 215));
+    HPEN ip = CreatePen(PS_SOLID, 1, RGB(0, 120, 215));
+    op = SelectObject(hdc, ip);
+    ob = SelectObject(hdc, inner);
+    Ellipse(hdc, cx - 4, thumbY - 4, cx + 4, thumbY + 4);
+    SelectObject(hdc, ob);
+    SelectObject(hdc, op);
+    DeleteObject(ip);
+    DeleteObject(inner);
+}
+
 void DrawLeftPanel(HDC hdc) {
-    RECT client; GetClientRect(g.hwnd, &client);
+    RECT client;
+    GetClientRect(g.hwnd, &client);
     const int top = CommandBarHeight();
     const int bottom = client.bottom - kStatusHeight;
-    static HFONT font = CreateFontW(-12, 0,0,0, FW_NORMAL, 0,0,0, DEFAULT_CHARSET, 0,0, CLEARTYPE_QUALITY, 0, L"Segoe UI");
+    static HFONT font = CreateFontW(-11, 0, 0, 0, FW_NORMAL, 0, 0, 0, DEFAULT_CHARSET,
+                                    0, 0, CLEARTYPE_QUALITY, 0, L"Segoe UI");
     HGDIOBJ oldFont = SelectObject(hdc, font);
     HBRUSH bg = CreateSolidBrush(RGB(243, 243, 243));
     FillRectValue(hdc, RECT{0, top, kLeftPanelWidth, bottom}, bg);
     DeleteObject(bg);
     HPEN line = CreatePen(PS_SOLID, 1, RGB(218, 218, 218));
     HGDIOBJ op = SelectObject(hdc, line);
-    MoveToEx(hdc, kLeftPanelWidth - 1, top, nullptr); LineTo(hdc, kLeftPanelWidth - 1, bottom);
-    SelectObject(hdc, op); DeleteObject(line);
+    MoveToEx(hdc, kLeftPanelWidth - 1, top, nullptr);
+    LineTo(hdc, kLeftPanelWidth - 1, bottom);
+    SelectObject(hdc, op);
+    DeleteObject(line);
 
-    int thickness = 1; g.attributes.GetValue(1, thickness);
+    const LeftSliderGeom G = GetLeftSliderGeom();
+    int thickness = 1;
+    g.attributes.GetValue(1, thickness);
     SetBkMode(hdc, TRANSPARENT);
-    SetTextColor(hdc, RGB(60,60,60));
-    RECT sl{2, top + 8, kLeftPanelWidth - 2, top + 24};
-    DrawTextW(hdc, L"Size", -1, &sl, DT_CENTER | DT_SINGLELINE);
-    // Size slider track
-    const int sx = kLeftPanelWidth / 2 - 2;
-    const int sy1 = top + 30, sy2 = top + 30 + kSliderHeight;
-    HBRUSH track = CreateSolidBrush(RGB(200,200,200));
-    FillRectValue(hdc, RECT{sx, sy1, sx + 4, sy2}, track); DeleteObject(track);
-    const int thumbY = sy2 - (thickness * (kSliderHeight - 10) / 40) - 5;
-    HBRUSH thumb = CreateSolidBrush(RGB(0,120,215));
-    FillRectValue(hdc, RECT{sx - 6, thumbY, sx + 10, thumbY + 10}, thumb); DeleteObject(thumb);
+    SetTextColor(hdc, RGB(80, 80, 80));
 
-    RECT ol{2, sy2 + 16, kLeftPanelWidth - 2, sy2 + 32};
+    RECT sl{2, G.sy1 - 20, kLeftPanelWidth - 2, G.sy1 - 4};
+    DrawTextW(hdc, L"Size", -1, &sl, DT_CENTER | DT_SINGLELINE);
+    DrawVerticalSlider(hdc, G.sx, G.sy1, G.sy2, (thickness - 1) / 39.0);
+    std::wstring sizeVal = std::to_wstring(thickness) + L"px";
+    RECT sv{2, G.sy2 + 4, kLeftPanelWidth - 2, G.sy2 + 20};
+    DrawTextW(hdc, sizeVal.c_str(), -1, &sv, DT_CENTER | DT_SINGLELINE);
+
+    RECT ol{2, G.oy1 - 20, kLeftPanelWidth - 2, G.oy1 - 4};
     DrawTextW(hdc, L"Opacity", -1, &ol, DT_CENTER | DT_SINGLELINE);
-    const int oy1 = sy2 + 38, oy2 = oy1 + kSliderHeight;
-    HBRUSH track2 = CreateSolidBrush(RGB(200,200,200));
-    FillRectValue(hdc, RECT{sx, oy1, sx + 4, oy2}, track2); DeleteObject(track2);
-    HBRUSH thumb2 = CreateSolidBrush(RGB(0,120,215));
-    FillRectValue(hdc, RECT{sx - 6, oy2 - 10, sx + 10, oy2}, thumb2); DeleteObject(thumb2);
+    DrawVerticalSlider(hdc, G.sx, G.oy1, G.oy2, g_opacityPercent / 100.0);
+    std::wstring opVal = std::to_wstring(g_opacityPercent) + L"%";
+    RECT ov{2, G.oy2 + 4, kLeftPanelWidth - 2, G.oy2 + 20};
+    DrawTextW(hdc, opVal.c_str(), -1, &ov, DT_CENTER | DT_SINGLELINE);
+
     SelectObject(hdc, oldFont);
 }
 
+struct StatusGeom {
+    RECT fit{};
+    RECT pct{};
+    RECT zoomOut{};
+    RECT slider{};
+    RECT zoomIn{};
+};
+
+StatusGeom GetStatusGeom(const RECT& client) {
+    const int zy = client.bottom - kStatusHeight + 4;
+    StatusGeom S;
+    S.fit = RECT{client.right - 310, zy, client.right - 282, zy + 24};
+    S.pct = RECT{client.right - 278, zy, client.right - 230, zy + 24};
+    S.zoomOut = RECT{client.right - 226, zy, client.right - 198, zy + 24};
+    S.slider = RECT{client.right - 192, zy, client.right - 48, zy + 24};
+    S.zoomIn = RECT{client.right - 42, zy, client.right - 14, zy + 24};
+    return S;
+}
+
 void DrawStatus(HDC hdc) {
-    RECT client; GetClientRect(g.hwnd, &client);
+    RECT client;
+    GetClientRect(g.hwnd, &client);
     const int top = client.bottom - kStatusHeight;
-    static HFONT font = CreateFontW(-12, 0,0,0, FW_NORMAL, 0,0,0, DEFAULT_CHARSET, 0,0, CLEARTYPE_QUALITY, 0, L"Segoe UI");
+    static HFONT font = CreateFontW(-12, 0, 0, 0, FW_NORMAL, 0, 0, 0, DEFAULT_CHARSET,
+                                    0, 0, CLEARTYPE_QUALITY, 0, L"Segoe UI");
     HGDIOBJ oldFont = SelectObject(hdc, font);
     HBRUSH bg = CreateSolidBrush(RGB(243, 243, 243));
     FillRectValue(hdc, RECT{0, top, client.right, client.bottom}, bg);
     DeleteObject(bg);
     HPEN line = CreatePen(PS_SOLID, 1, RGB(218, 218, 218));
     HGDIOBJ op = SelectObject(hdc, line);
-    MoveToEx(hdc, 0, top, nullptr); LineTo(hdc, client.right, top);
-    SelectObject(hdc, op); DeleteObject(line);
+    MoveToEx(hdc, 0, top, nullptr);
+    LineTo(hdc, client.right, top);
+    SelectObject(hdc, op);
+    DeleteObject(line);
     SetBkMode(hdc, TRANSPARENT);
-    SetTextColor(hdc, RGB(50,50,50));
+    SetTextColor(hdc, RGB(60, 60, 60));
 
-    // Left: cursor pos and canvas size
-    std::wstring left = std::to_wstring(g.cursorX >= 0 ? g.cursorX : 0) + L", " +
-                        std::to_wstring(g.cursorY >= 0 ? g.cursorY : 0) + L"px";
-    TextOutW(hdc, 12, top + 8, left.c_str(), static_cast<int>(left.size()));
-    std::wstring size = std::to_wstring(g.image->width()) + L" x " +
-                        std::to_wstring(g.image->height()) + L"px";
-    TextOutW(hdc, 140, top + 8, size.c_str(), static_cast<int>(size.size()));
+    // Left: cursor pos (when inside image), selection size (when active), canvas size
+    if (g.cursorX >= 0 && g.cursorY >= 0 && g.image &&
+        g.cursorX < g.image->width() && g.cursorY < g.image->height()) {
+        std::wstring pos = std::to_wstring(g.cursorX) + L", " +
+                           std::to_wstring(g.cursorY) + L"px";
+        TextOutW(hdc, 14, top + 8, pos.c_str(), static_cast<int>(pos.size()));
+    }
+    const Rect selRect = g.tool ? g.tool->SelectionRect() : Rect{};
+    if (selRect.w > 0 && selRect.h > 0) {
+        std::wstring selStr = std::to_wstring(selRect.w) + L" \u00D7 " +
+                              std::to_wstring(selRect.h) + L"px";
+        TextOutW(hdc, 124, top + 8, selStr.c_str(), static_cast<int>(selStr.size()));
+    }
+    if (g.image) {
+        std::wstring size = std::to_wstring(g.image->width()) + L" \u00D7 " +
+                            std::to_wstring(g.image->height()) + L"px";
+        TextOutW(hdc, 240, top + 8, size.c_str(), static_cast<int>(size.size()));
+    }
 
-    // Right: zoom controls matching Paint 11
-    const int zy = top + 4;
-    auto btn = [&](int bx, const wchar_t* t, int w = 28) {
-        RECT r{bx, zy, bx + w, zy + 24};
-        HBRUSH bbr = CreateSolidBrush(RGB(243,243,243));
-        FillRectValue(hdc, r, bbr); DeleteObject(bbr);
-        DrawTextW(hdc, t, -1, &r, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
-        return r;
+    const StatusGeom S = GetStatusGeom(client);
+    auto drawSBtn = [&](const RECT& r, const char* icon, const wchar_t* fallback, bool hov) {
+        if (hov) {
+            HBRUSH hb = CreateSolidBrush(RGB(228, 228, 228));
+            HPEN hp = CreatePen(PS_SOLID, 1, RGB(205, 205, 205));
+            HGDIOBJ ohp = SelectObject(hdc, hp);
+            HGDIOBJ ohb = SelectObject(hdc, hb);
+            RoundRect(hdc, r.left, r.top, r.right, r.bottom, 4, 4);
+            SelectObject(hdc, ohb);
+            SelectObject(hdc, ohp);
+            DeleteObject(hp);
+            DeleteObject(hb);
+        }
+        if (Image* img = icon ? GetIcon(icon) : nullptr) {
+            DrawToolIcon(hdc, *img, r.left + 6, r.top + 4, 16);
+        } else if (fallback) {
+            DrawTextW(hdc, fallback, -1, const_cast<RECT*>(&r), DT_CENTER | DT_VCENTER | DT_SINGLELINE);
+        }
     };
-    btn(client.right - 320, L"\u229F", 30); // fit
-    TextOutW(hdc, client.right - 280, top + 8, (std::to_wstring(g.zoom*100)+L"%").c_str(),
-             static_cast<int>((std::to_wstring(g.zoom*100)+L"%").size()));
-    btn(client.right - 220, L"\u2212");
-    // slider track
-    const int sl = client.right - 186, sr = client.right - 70;
-    HBRUSH trk = CreateSolidBrush(RGB(190,190,190));
-    FillRectValue(hdc, RECT{sl, top + 15, sr, top + 18}, trk); DeleteObject(trk);
+
+    drawSBtn(S.fit, "fit_window.png", L"\u229F", g_hoverStatusPart == 1);
+    std::wstring zstr = std::to_wstring(g.zoom * 100) + L"%";
+    DrawTextW(hdc, zstr.c_str(), -1, const_cast<RECT*>(&S.pct), DT_CENTER | DT_VCENTER | DT_SINGLELINE);
+    drawSBtn(S.zoomOut, "zoom_out.png", L"\u2212", g_hoverStatusPart == 2);
+
+    // Zoom slider
+    const int sl = S.slider.left + 8;
+    const int sr = S.slider.right - 8;
+    const int cy = (S.slider.top + S.slider.bottom) / 2;
     const int zx = sl + (g.zoom - 1) * (sr - sl) / 15;
-    HBRUSH th = CreateSolidBrush(RGB(0,120,215));
-    FillRectValue(hdc, RECT{zx-4, top+9, zx+4, top+23}, th); DeleteObject(th);
-    btn(client.right - 64, L"+");
+    HBRUSH trk = CreateSolidBrush(RGB(200, 200, 200));
+    FillRectValue(hdc, RECT{sl, cy - 2, sr, cy + 2}, trk);
+    DeleteObject(trk);
+    if (zx > sl) {
+        HBRUSH fl = CreateSolidBrush(RGB(0, 120, 215));
+        FillRectValue(hdc, RECT{sl, cy - 2, zx, cy + 2}, fl);
+        DeleteObject(fl);
+    }
+    HBRUSH tho = CreateSolidBrush(RGB(255, 255, 255));
+    HPEN thop = CreatePen(PS_SOLID, 1, RGB(180, 180, 180));
+    HGDIOBJ op1 = SelectObject(hdc, thop);
+    HGDIOBJ ob1 = SelectObject(hdc, tho);
+    Ellipse(hdc, zx - 7, cy - 7, zx + 7, cy + 7);
+    SelectObject(hdc, ob1);
+    SelectObject(hdc, op1);
+    DeleteObject(thop);
+    DeleteObject(tho);
+    HBRUSH thi = CreateSolidBrush(RGB(0, 120, 215));
+    HPEN thip = CreatePen(PS_SOLID, 1, RGB(0, 120, 215));
+    op1 = SelectObject(hdc, thip);
+    ob1 = SelectObject(hdc, thi);
+    Ellipse(hdc, zx - 4, cy - 4, zx + 4, cy + 4);
+    SelectObject(hdc, ob1);
+    SelectObject(hdc, op1);
+    DeleteObject(thip);
+    DeleteObject(thi);
+
+    drawSBtn(S.zoomIn, "zoom_in.png", L"+", g_hoverStatusPart == 3);
     SelectObject(hdc, oldFont);
 }
 
 void DrawRuler(HDC hdc, const RECT& canvas) {
     if (!g_rulerVisible) return;
-    const int ruler = 18;
-    HBRUSH face = CreateSolidBrush(RGB(235, 235, 235));
-    FillRectValue(hdc, RECT{canvas.left, canvas.top, canvas.right, canvas.top + ruler}, face);
-    FillRectValue(hdc, RECT{canvas.left, canvas.top, canvas.left + ruler, canvas.bottom}, face);
+    const RECT ws = WorkspaceRect();
+    static HFONT rfont = CreateFontW(-10, 0, 0, 0, FW_NORMAL, 0, 0, 0, DEFAULT_CHARSET,
+                                     0, 0, CLEARTYPE_QUALITY, 0, L"Segoe UI");
+    HGDIOBJ oldFont = SelectObject(hdc, rfont);
+    HBRUSH face = CreateSolidBrush(RGB(246, 246, 246));
+    FillRectValue(hdc, RECT{ws.left, ws.top, ws.right, ws.top + kRulerSize}, face);
+    FillRectValue(hdc, RECT{ws.left, ws.top, ws.left + kRulerSize, ws.bottom}, face);
     DeleteObject(face);
-    HPEN pen = CreatePen(PS_SOLID, 1, RGB(90, 90, 90));
-    const HPEN old = static_cast<HPEN>(SelectObject(hdc, pen));
-    for (int px = 0; px <= g.image->width(); px += 10) {
+
+    HPEN border = CreatePen(PS_SOLID, 1, RGB(212, 212, 212));
+    HGDIOBJ old = SelectObject(hdc, border);
+    MoveToEx(hdc, ws.left, ws.top + kRulerSize - 1, nullptr);
+    LineTo(hdc, ws.right, ws.top + kRulerSize - 1);
+    MoveToEx(hdc, ws.left + kRulerSize - 1, ws.top, nullptr);
+    LineTo(hdc, ws.left + kRulerSize - 1, ws.bottom);
+    SelectObject(hdc, old);
+    DeleteObject(border);
+
+    HPEN pen = CreatePen(PS_SOLID, 1, RGB(120, 120, 120));
+    old = SelectObject(hdc, pen);
+    SetBkMode(hdc, TRANSPARENT);
+    SetTextColor(hdc, RGB(90, 90, 90));
+    const int step = (g.zoom >= 4) ? 10 : 20;
+    for (int px = 0; px <= g.image->width(); px += step) {
         const int x = canvas.left + px * g.zoom;
-        if (x > canvas.right) break;
+        if (x < ws.left + kRulerSize) continue;
+        if (x > ws.right) break;
         const int length = (px % 100 == 0) ? 10 : 5;
-        MoveToEx(hdc, x, canvas.top + ruler, nullptr);
-        LineTo(hdc, x, canvas.top + ruler - length);
-        if (px % 100 == 0 && px > 0) {
+        MoveToEx(hdc, x, ws.top + kRulerSize - 1, nullptr);
+        LineTo(hdc, x, ws.top + kRulerSize - 1 - length);
+        if (px % 100 == 0) {
             const std::wstring label = std::to_wstring(px);
-            TextOutW(hdc, x + 2, canvas.top + 1, label.c_str(), static_cast<int>(label.size()));
+            TextOutW(hdc, x + 2, ws.top + 1, label.c_str(), static_cast<int>(label.size()));
         }
     }
-    for (int py = 0; py <= g.image->height(); py += 10) {
+    for (int py = 0; py <= g.image->height(); py += step) {
         const int y = canvas.top + py * g.zoom;
-        if (y > canvas.bottom) break;
+        if (y < ws.top + kRulerSize) continue;
+        if (y > ws.bottom) break;
         const int length = (py % 100 == 0) ? 10 : 5;
-        MoveToEx(hdc, canvas.left + ruler, y, nullptr);
-        LineTo(hdc, canvas.left + ruler - length, y);
+        MoveToEx(hdc, ws.left + kRulerSize - 1, y, nullptr);
+        LineTo(hdc, ws.left + kRulerSize - 1 - length, y);
+        if (py % 100 == 0) {
+            const std::wstring label = std::to_wstring(py);
+            TextOutW(hdc, ws.left + 1, y + 2, label.c_str(), static_cast<int>(label.size()));
+        }
     }
     SelectObject(hdc, old);
     DeleteObject(pen);
+    SelectObject(hdc, oldFont);
 }
 
 void Paint(HWND hwnd) {
@@ -689,19 +971,31 @@ void Paint(HWND hwnd) {
     HDC mem = CreateCompatibleDC(hdc);
     HBITMAP bitmap = CreateCompatibleBitmap(hdc, client.right, client.bottom);
     HGDIOBJ old = SelectObject(mem, bitmap);
-    HBRUSH ws = CreateSolidBrush(RGB(242, 242, 242));
-    FillRect(mem, &client, ws); DeleteObject(ws);
+    HBRUSH wsBrush = CreateSolidBrush(RGB(238, 238, 238));
+    FillRect(mem, &client, wsBrush);
+    DeleteObject(wsBrush);
+
+    const RECT ws = WorkspaceRect();
+    const RECT vp = ViewportRect();
+    const int clipLeft = g_rulerVisible ? (ws.left + kRulerSize) : ws.left;
+    const int clipTop = g_rulerVisible ? (ws.top + kRulerSize) : ws.top;
+    (void)vp;
+    const int saved = SaveDC(mem);
+    IntersectClipRect(mem, clipLeft, clipTop, ws.right, ws.bottom);
+
     const RECT canvas = CanvasRect();
-    // canvas shadow/border
     {
         const int cw = g.image->width() * g.zoom, ch = g.image->height() * g.zoom;
         RECT shadow{canvas.left + 3, canvas.top + 3, canvas.left + cw + 3, canvas.top + ch + 3};
-        HBRUSH sh = CreateSolidBrush(RGB(210,210,210));
-        FillRect(mem, &shadow, sh); DeleteObject(sh);
+        HBRUSH sh = CreateSolidBrush(RGB(210, 210, 210));
+        FillRect(mem, &shadow, sh);
+        DeleteObject(sh);
     }
     DrawCanvas(mem, canvas);
-    DrawRuler(mem, canvas);
     DrawCanvasResizeHandles(mem, canvas);
+    RestoreDC(mem, saved);
+
+    DrawRuler(mem, canvas);
     DrawCommandBar(mem);
     DrawLeftPanel(mem);
     DrawStatus(mem);
@@ -717,59 +1011,169 @@ void DoCommand(WORD id);
 bool HandleCommandBarClick(int x, int y, bool rightButton) {
     if (!g_commandBarVisible || y >= kCommandBarHeight) return false;
     CommandLayout L = BuildCommandLayout();
-    for (auto& b : L.buttons) {
-        if (HitRect(b.rect, x, y)) { DoCommand(static_cast<WORD>(b.command)); return true; }
-    }
-    for (auto& sb : L.shapeButtons) {
-        if (HitRect(sb.rect, x, y)) { DoCommand(static_cast<WORD>(sb.command)); return true; }
-    }
-    {
-        RECT c2 = L.color2; OffsetRect(&c2, 8, -6);
-        if (HitRect(L.color1, x, y) || HitRect(c2, x, y)) {
-            std::swap(g.foreground, g.background); RebuildTool(); InvalidateRect(g.hwnd, nullptr, TRUE); return true;
+    for (const auto& b : L.buttons) {
+        if (HitRect(b.rect, x, y)) {
+            if (b.enabled) DoCommand(static_cast<WORD>(b.command));
+            return true;
         }
+    }
+    for (const auto& sb : L.shapeButtons) {
+        if (HitRect(sb.rect, x, y)) {
+            DoCommand(static_cast<WORD>(sb.command));
+            return true;
+        }
+    }
+    if (HitRect(L.color1, x, y)) {
+        g_activeColorSlot = 1;
+        InvalidateRect(g.hwnd, nullptr, FALSE);
+        return true;
+    }
+    if (HitRect(L.color2, x, y)) {
+        g_activeColorSlot = 2;
+        InvalidateRect(g.hwnd, nullptr, FALSE);
+        return true;
     }
     for (int i = 0; i < static_cast<int>(L.palette.size()) && i < 20; ++i) {
         if (HitRect(L.palette[i], x, y)) {
-            Color c = (i < 20) ? palette::Paint11Colors[i] : MakeColor(255,255,255);
-            if (rightButton) g.background = c; else g.foreground = c;
-            RebuildTool(); InvalidateRect(g.hwnd, nullptr, TRUE); return true;
+            Color c = palette::Paint11Colors[i];
+            if (rightButton || g_activeColorSlot == 2) g.background = c;
+            else g.foreground = c;
+            RebuildTool();
+            InvalidateRect(g.hwnd, nullptr, FALSE);
+            return true;
         }
     }
-    if (HitRect(L.editColors, x, y)) { DoCommand(501); return true; }
-    return true; // consume clicks in command bar area
-}
-
-bool HandleLeftPanelClick(int x, int y) {
-    if (x >= kLeftPanelWidth) return false;
-    RECT client; GetClientRect(g.hwnd, &client);
-    const int top = CommandBarHeight();
-    if (y < top || y >= client.bottom - kStatusHeight) return false;
-    const int sy1 = top + 30, sy2 = top + 30 + kSliderHeight;
-    if (y >= sy1 && y <= sy2) {
-        int t = 40 - (y - sy1) * 40 / (kSliderHeight - 10);
-        t = std::max(1, std::min(40, t));
-        g.attributes.SetValue(1, t);
-        if (g.tool) g.tool->SetThickness(static_cast<unsigned>(t));
-        InvalidateRect(g.hwnd, nullptr, TRUE);
+    if (HitRect(L.editColors, x, y)) {
+        DoCommand(501);
         return true;
     }
     return true;
 }
 
+void ApplySizeSliderY(int y) {
+    const LeftSliderGeom G = GetLeftSliderGeom();
+    const double frac = 1.0 - static_cast<double>(y - G.sy1) / std::max(1, G.sliderH);
+    const int t = std::max(1, std::min(40, 1 + static_cast<int>(frac * 39.0 + 0.5)));
+    g.attributes.SetValue(1, t);
+    if (g.tool) g.tool->SetThickness(static_cast<unsigned>(t));
+    InvalidateRect(g.hwnd, nullptr, FALSE);
+}
+
+void ApplyOpacitySliderY(int y) {
+    const LeftSliderGeom G = GetLeftSliderGeom();
+    const double frac = 1.0 - static_cast<double>(y - G.oy1) / std::max(1, G.sliderH);
+    g_opacityPercent = std::max(0, std::min(100, static_cast<int>(frac * 100.0 + 0.5)));
+    if (g.tool) g.tool->SetOpacity(g_opacityPercent / 100.0);
+    InvalidateRect(g.hwnd, nullptr, FALSE);
+}
+
+bool HandleLeftPanelClick(int x, int y) {
+    if (x >= kLeftPanelWidth) return false;
+    RECT client;
+    GetClientRect(g.hwnd, &client);
+    const int top = CommandBarHeight();
+    if (y < top || y >= client.bottom - kStatusHeight) return false;
+    const LeftSliderGeom G = GetLeftSliderGeom();
+    if (y >= G.sy1 - 6 && y <= G.sy2 + 6) {
+        g_dragControl = 1;
+        SetCapture(g.hwnd);
+        ApplySizeSliderY(y);
+        return true;
+    }
+    if (y >= G.oy1 - 6 && y <= G.oy2 + 6) {
+        g_dragControl = 2;
+        SetCapture(g.hwnd);
+        ApplyOpacitySliderY(y);
+        return true;
+    }
+    return true;
+}
+
+void ApplyZoomSliderX(int x) {
+    RECT client;
+    GetClientRect(g.hwnd, &client);
+    const StatusGeom S = GetStatusGeom(client);
+    const int sl = S.slider.left + 8;
+    const int sr = S.slider.right - 8;
+    const double frac = static_cast<double>(x - sl) / std::max(1, sr - sl);
+    g.zoom = std::max(1, std::min(16, 1 + static_cast<int>(frac * 15.0 + 0.5)));
+    InvalidateRect(g.hwnd, nullptr, FALSE);
+}
+
 bool HandleStatusBarClick(int x, int y) {
-    RECT client; GetClientRect(g.hwnd, &client);
+    RECT client;
+    GetClientRect(g.hwnd, &client);
     const int top = client.bottom - kStatusHeight;
     if (y < top) return false;
-    // fit, zoom-, slider, zoom+
-    if (x >= client.right - 320 && x < client.right - 290) { DoCommand(311); return true; } // fit to window
-    if (x >= client.right - 220 && x < client.right - 192) { g.zoom = std::max(1, g.zoom / 2); InvalidateRect(g.hwnd,nullptr,TRUE); return true; }
-    if (x >= client.right - 186 && x < client.right - 70) {
-        int z = 1 + (x - (client.right - 186)) * 15 / (116);
-        g.zoom = std::max(1, std::min(16, z)); InvalidateRect(g.hwnd,nullptr,TRUE); return true;
+    const StatusGeom S = GetStatusGeom(client);
+    if (HitRect(S.fit, x, y)) { DoCommand(311); return true; }
+    if (HitRect(S.zoomOut, x, y)) {
+        g.zoom = std::max(1, g.zoom / 2);
+        InvalidateRect(g.hwnd, nullptr, FALSE);
+        return true;
     }
-    if (x >= client.right - 64 && x < client.right - 36) { g.zoom = std::min(16, g.zoom * 2); InvalidateRect(g.hwnd,nullptr,TRUE); return true; }
+    if (HitRect(S.slider, x, y)) {
+        g_dragControl = 3;
+        SetCapture(g.hwnd);
+        ApplyZoomSliderX(x);
+        return true;
+    }
+    if (HitRect(S.zoomIn, x, y)) {
+        g.zoom = std::min(16, g.zoom * 2);
+        InvalidateRect(g.hwnd, nullptr, FALSE);
+        return true;
+    }
     return true;
+}
+
+void UpdateHover(int x, int y) {
+    int newCmd = 0;
+    int newShape = -1;
+    int newPal = -1;
+    bool newC1 = false, newC2 = false, newEdit = false;
+    int newStatus = 0;
+
+    if (g_commandBarVisible && y < kCommandBarHeight) {
+        CommandLayout L = BuildCommandLayout();
+        for (const auto& b : L.buttons) {
+            if (HitRect(b.rect, x, y)) { newCmd = b.command; break; }
+        }
+        if (newCmd == 0) {
+            for (int i = 0; i < static_cast<int>(L.shapeButtons.size()); ++i) {
+                if (HitRect(L.shapeButtons[i].rect, x, y)) { newShape = i; break; }
+            }
+        }
+        if (HitRect(L.color1, x, y)) newC1 = true;
+        else if (HitRect(L.color2, x, y)) newC2 = true;
+        else if (HitRect(L.editColors, x, y)) newEdit = true;
+        else {
+            for (int i = 0; i < static_cast<int>(L.palette.size()); ++i) {
+                if (HitRect(L.palette[i], x, y)) { newPal = i; break; }
+            }
+        }
+    } else {
+        RECT client;
+        GetClientRect(g.hwnd, &client);
+        if (y >= client.bottom - kStatusHeight) {
+            const StatusGeom S = GetStatusGeom(client);
+            if (HitRect(S.fit, x, y)) newStatus = 1;
+            else if (HitRect(S.zoomOut, x, y)) newStatus = 2;
+            else if (HitRect(S.zoomIn, x, y)) newStatus = 3;
+        }
+    }
+
+    if (newCmd != g_hoverCmd || newShape != g_hoverShapeIdx || newPal != g_hoverPaletteIdx ||
+        newC1 != g_hoverColor1 || newC2 != g_hoverColor2 || newEdit != g_hoverEditColors ||
+        newStatus != g_hoverStatusPart) {
+        g_hoverCmd = newCmd;
+        g_hoverShapeIdx = newShape;
+        g_hoverPaletteIdx = newPal;
+        g_hoverColor1 = newC1;
+        g_hoverColor2 = newC2;
+        g_hoverEditColors = newEdit;
+        g_hoverStatusPart = newStatus;
+        InvalidateRect(g.hwnd, nullptr, FALSE);
+    }
 }
 
 void SelectFile(bool save) {
@@ -827,21 +1231,28 @@ void DoCommand(WORD id) {
     }
     if (id == 307) {
         g_rulerVisible = !g_rulerVisible;
+        if (HMENU m = GetMenu(g.hwnd))
+            CheckMenuItem(m, 307, MF_BYCOMMAND | (g_rulerVisible ? MF_CHECKED : MF_UNCHECKED));
         InvalidateRect(g.hwnd, nullptr, TRUE);
         return;
     }
     if (id == 308) {
         g_commandBarVisible = !g_commandBarVisible;
+        if (HMENU m = GetMenu(g.hwnd))
+            CheckMenuItem(m, 308, MF_BYCOMMAND | (g_commandBarVisible ? MF_CHECKED : MF_UNCHECKED));
         InvalidateRect(g.hwnd, nullptr, TRUE);
         return;
     }
     if (id == 9001) {
+        int curT = 1; g.attributes.GetValue(1, curT);
         HMENU m = CreatePopupMenu();
         AppendMenuW(m, MF_STRING, 9201, L"No outline");
-        AppendMenuW(m, MF_STRING, 9202, L"Solid color");
+        AppendMenuW(m, MF_STRING | MF_CHECKED, 9202, L"Solid color");
         AppendMenuW(m, MF_SEPARATOR, 0, nullptr);
-        AppendMenuW(m, MF_STRING, 9203, L"1px"); AppendMenuW(m, MF_STRING, 9204, L"3px");
-        AppendMenuW(m, MF_STRING, 9205, L"5px"); AppendMenuW(m, MF_STRING, 9206, L"8px");
+        AppendMenuW(m, MF_STRING | (curT == 1 ? MF_CHECKED : 0), 9203, L"1px");
+        AppendMenuW(m, MF_STRING | (curT == 3 ? MF_CHECKED : 0), 9204, L"3px");
+        AppendMenuW(m, MF_STRING | (curT == 5 ? MF_CHECKED : 0), 9205, L"5px");
+        AppendMenuW(m, MF_STRING | (curT == 8 ? MF_CHECKED : 0), 9206, L"8px");
         POINT pt; GetCursorPos(&pt);
         int sel = TrackPopupMenuEx(m, TPM_RETURNCMD | TPM_LEFTALIGN | TPM_TOPALIGN, pt.x, pt.y, g.hwnd, nullptr);
         DestroyMenu(m);
@@ -854,8 +1265,8 @@ void DoCommand(WORD id) {
     }
     if (id == 9002) {
         HMENU m = CreatePopupMenu();
-        AppendMenuW(m, MF_STRING, 9211, L"No fill");
-        AppendMenuW(m, MF_STRING, 9212, L"Solid color");
+        AppendMenuW(m, MF_STRING | (!g_shapeFilled ? MF_CHECKED : 0), 9211, L"No fill");
+        AppendMenuW(m, MF_STRING | (g_shapeFilled ? MF_CHECKED : 0), 9212, L"Solid color");
         POINT pt; GetCursorPos(&pt);
         int sel = TrackPopupMenuEx(m, TPM_RETURNCMD | TPM_LEFTALIGN | TPM_TOPALIGN, pt.x, pt.y, g.hwnd, nullptr);
         DestroyMenu(m);
@@ -865,18 +1276,46 @@ void DoCommand(WORD id) {
     }
     if (id == 9004) {
         HMENU m = CreatePopupMenu();
-        AppendMenuW(m, MF_STRING, 800, L"Rectangular selection");
-        AppendMenuW(m, MF_STRING, 801, L"Free-form selection");
+        AppendMenuW(m, MF_STRING | (g.toolKind == PaintToolKind::Selection ? MF_CHECKED : 0), 800, L"Rectangular selection");
+        AppendMenuW(m, MF_STRING | (g.toolKind == PaintToolKind::FreeFormSelection ? MF_CHECKED : 0), 801, L"Free-form selection");
         POINT pt; GetCursorPos(&pt);
         int sel = TrackPopupMenuEx(m, TPM_RETURNCMD | TPM_LEFTALIGN | TPM_TOPALIGN, pt.x, pt.y, g.hwnd, nullptr);
         DestroyMenu(m);
         if (sel) DoCommand(static_cast<WORD>(sel));
         return;
     }
+    if (id == 9005) {
+        HMENU m = CreatePopupMenu();
+        AppendMenuW(m, MF_STRING, 401, L"Flip horizontal");
+        AppendMenuW(m, MF_STRING, 402, L"Flip vertical");
+        POINT pt; GetCursorPos(&pt);
+        int sel = TrackPopupMenuEx(m, TPM_RETURNCMD | TPM_LEFTALIGN | TPM_TOPALIGN, pt.x, pt.y, g.hwnd, nullptr);
+        DestroyMenu(m);
+        if (sel) DoCommand(static_cast<WORD>(sel));
+        return;
+    }
+    if (id == 9006) {
+        HMENU m = CreatePopupMenu();
+        AppendMenuW(m, MF_STRING, 403, L"Rotate right 90\u00B0");
+        AppendMenuW(m, MF_STRING, 9221, L"Rotate left 90\u00B0");
+        AppendMenuW(m, MF_STRING, 9222, L"Rotate 180\u00B0");
+        AppendMenuW(m, MF_SEPARATOR, 0, nullptr);
+        AppendMenuW(m, MF_STRING, 406, L"Custom rotate...");
+        POINT pt; GetCursorPos(&pt);
+        int sel = TrackPopupMenuEx(m, TPM_RETURNCMD | TPM_LEFTALIGN | TPM_TOPALIGN, pt.x, pt.y, g.hwnd, nullptr);
+        DestroyMenu(m);
+        if (sel == 9221) WholeImageOperation(OperationKind::Rotate, [](Image& i) { i.Rotate(4.7123889803846899); });
+        else if (sel == 9222) WholeImageOperation(OperationKind::Rotate, [](Image& i) { i.Rotate(3.1415926535897932); });
+        else if (sel) DoCommand(static_cast<WORD>(sel));
+        return;
+    }
     if (id == 9003) {
+        int curT = 1; g.attributes.GetValue(1, curT);
         HMENU m = CreatePopupMenu();
         const int sizes[] = {1,3,5,8};
-        for (int i = 0; i < 4; ++i) AppendMenuW(m, MF_STRING, 9100 + sizes[i], (std::to_wstring(sizes[i]) + L"px").c_str());
+        for (int i = 0; i < 4; ++i)
+            AppendMenuW(m, MF_STRING | (curT == sizes[i] ? MF_CHECKED : 0),
+                        9100 + sizes[i], (std::to_wstring(sizes[i]) + L"px").c_str());
         POINT pt; GetCursorPos(&pt);
         int sel = TrackPopupMenuEx(m, TPM_RETURNCMD | TPM_LEFTALIGN | TPM_TOPALIGN, pt.x, pt.y, g.hwnd, nullptr);
         DestroyMenu(m);
@@ -885,14 +1324,14 @@ void DoCommand(WORD id) {
     }
     if (id == 807) {
         HMENU m = CreatePopupMenu();
-        AppendMenuW(m, MF_STRING, 701, L"Brush");
-        AppendMenuW(m, MF_STRING, 703, L"Calligraphy brush");
-        AppendMenuW(m, MF_STRING, 702, L"Airbrush");
-        AppendMenuW(m, MF_STRING, 704, L"Oil brush");
-        AppendMenuW(m, MF_STRING, 707, L"Crayon");
-        AppendMenuW(m, MF_STRING, 706, L"Marker");
-        AppendMenuW(m, MF_STRING, 708, L"Natural pencil");
-        AppendMenuW(m, MF_STRING, 705, L"Watercolour");
+        AppendMenuW(m, MF_STRING | (g.toolKind == PaintToolKind::Brush ? MF_CHECKED : 0), 701, L"Brush");
+        AppendMenuW(m, MF_STRING | (g.toolKind == PaintToolKind::Calligraphic ? MF_CHECKED : 0), 703, L"Calligraphy brush");
+        AppendMenuW(m, MF_STRING | (g.toolKind == PaintToolKind::Airbrush ? MF_CHECKED : 0), 702, L"Airbrush");
+        AppendMenuW(m, MF_STRING | (g.toolKind == PaintToolKind::OilBrush ? MF_CHECKED : 0), 704, L"Oil brush");
+        AppendMenuW(m, MF_STRING | (g.toolKind == PaintToolKind::Crayon ? MF_CHECKED : 0), 707, L"Crayon");
+        AppendMenuW(m, MF_STRING | (g.toolKind == PaintToolKind::Marker ? MF_CHECKED : 0), 706, L"Marker");
+        AppendMenuW(m, MF_STRING | (g.toolKind == PaintToolKind::NaturalPencil ? MF_CHECKED : 0), 708, L"Natural pencil");
+        AppendMenuW(m, MF_STRING | (g.toolKind == PaintToolKind::Watercolor ? MF_CHECKED : 0), 705, L"Watercolour");
         POINT pt; GetCursorPos(&pt);
         int sel = TrackPopupMenuEx(m, TPM_RETURNCMD | TPM_LEFTALIGN | TPM_TOPALIGN, pt.x, pt.y, g.hwnd, nullptr);
         DestroyMenu(m);
@@ -978,7 +1417,12 @@ void DoCommand(WORD id) {
         case 301: g.zoom = 2; InvalidateRect(g.hwnd, nullptr, TRUE); break;
         case 302: g.zoom = 4; InvalidateRect(g.hwnd, nullptr, TRUE); break;
         case 303: g.zoom = 8; InvalidateRect(g.hwnd, nullptr, TRUE); break;
-        case 304: g.showGrid = !g.showGrid; InvalidateRect(g.hwnd, nullptr, TRUE); break;
+        case 304:
+            g.showGrid = !g.showGrid;
+            if (HMENU m = GetMenu(g.hwnd))
+                CheckMenuItem(m, 304, MF_BYCOMMAND | (g.showGrid ? MF_CHECKED : MF_UNCHECKED));
+            InvalidateRect(g.hwnd, nullptr, TRUE);
+            break;
         case 311: {
             const RECT c = CanvasRect();
             const int cw = std::max(1, static_cast<int>(c.right - c.left));
@@ -1098,7 +1542,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam) 
             AppendMenuW(view, MF_SEPARATOR, 0, nullptr);
             AppendMenuW(view, MF_STRING, 304, L"Show &Grid");
             AppendMenuW(view, MF_STRING, 307, L"Show &Ruler");
-            AppendMenuW(view, MF_STRING, 308, L"Show &Ribbon");
+            AppendMenuW(view, MF_STRING | MF_CHECKED, 308, L"Show &Command bar");
             AppendMenuW(view, MF_STRING, 309, L"&Full screen");
             AppendMenuW(view, MF_STRING, 310, L"&Thumbnail");
             HMENU imageMenu = CreatePopupMenu();
@@ -1106,35 +1550,16 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam) 
             AppendMenuW(imageMenu, MF_STRING, 401, L"Flip &Horizontal");
             AppendMenuW(imageMenu, MF_STRING, 402, L"Flip &Vertical");
             AppendMenuW(imageMenu, MF_STRING, 403, L"Rotate &90°");
-            AppendMenuW(imageMenu, MF_STRING, 404, L"&Attributes...");
-            AppendMenuW(imageMenu, MF_STRING, 405, L"&Stretch / Skew...");
+            AppendMenuW(imageMenu, MF_SEPARATOR, 0, nullptr);
+            AppendMenuW(imageMenu, MF_STRING, 404, L"Image &Properties...");
+            AppendMenuW(imageMenu, MF_STRING, 405, L"&Resize and skew...");
             AppendMenuW(imageMenu, MF_STRING, 406, L"Flip / &Rotate...");
-            static const wchar_t* shapeLabels[] = {
-                L"Rectangle", L"Rounded rectangle", L"Oval", L"Right triangle",
-                L"Diamond", L"Pentagon", L"Hexagon", L"5-point star", L"4-point star",
-                L"6-point star", L"Heart", L"Lightning", L"Left arrow", L"Right arrow",
-                L"Up arrow", L"Down arrow", L"Cloud callout", L"Oval callout",
-                L"Rounded rectangle callout"};
-            HMENU shapes = CreatePopupMenu();
-            for (int i = 0; i < 19; ++i)
-                AppendMenuW(shapes, MF_STRING, 600 + i, shapeLabels[i]);
-            static const wchar_t* brushLabels[] = {
-                L"Pencil", L"Brush", L"Airbrush", L"Calligraphy pen", L"Oil brush",
-                L"Watercolor", L"Marker", L"Crayon", L"Natural pencil"};
-            HMENU brushes = CreatePopupMenu();
-            for (int i = 0; i < 9; ++i)
-                AppendMenuW(brushes, MF_STRING, 700 + i, brushLabels[i]);
-            HMENU colors = CreatePopupMenu();
-            AppendMenuW(colors, MF_STRING, 501, L"&Edit Colors...");
             HMENU help = CreatePopupMenu();
-            AppendMenuW(help, MF_STRING, 500, L"&About...");
+            AppendMenuW(help, MF_STRING, 500, L"&About PaintRebuild...");
             AppendMenuW(menu, MF_POPUP, reinterpret_cast<UINT_PTR>(file), L"&File");
             AppendMenuW(menu, MF_POPUP, reinterpret_cast<UINT_PTR>(edit), L"&Edit");
             AppendMenuW(menu, MF_POPUP, reinterpret_cast<UINT_PTR>(view), L"&View");
             AppendMenuW(menu, MF_POPUP, reinterpret_cast<UINT_PTR>(imageMenu), L"&Image");
-            AppendMenuW(menu, MF_POPUP, reinterpret_cast<UINT_PTR>(shapes), L"&Shapes");
-            AppendMenuW(menu, MF_POPUP, reinterpret_cast<UINT_PTR>(brushes), L"&Brushes");
-            AppendMenuW(menu, MF_POPUP, reinterpret_cast<UINT_PTR>(colors), L"&Colors");
             AppendMenuW(menu, MF_POPUP, reinterpret_cast<UINT_PTR>(help), L"&Help");
             SetMenu(hwnd, menu);
             NewDocument(800, 600);
@@ -1216,6 +1641,9 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam) 
                 return 0;
             }
             if (g.tool) g.tool->OnStylusDown(p);
+            if (g.toolKind == PaintToolKind::Zoom) {
+                if (auto* z = dynamic_cast<ZoomTool*>(g.tool.get())) g.zoom = std::max(1, std::min(16, z->ZoomFactor()));
+            }
             g.drawing = true;
             SetCapture(hwnd);
             InvalidateRect(hwnd, nullptr, TRUE);
@@ -1224,9 +1652,24 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam) 
         case WM_MOUSEMOVE: {
             const int x = GET_X_LPARAM(lParam);
             const int y = GET_Y_LPARAM(lParam);
+            TRACKMOUSEEVENT tme{sizeof(tme), TME_LEAVE, hwnd, 0};
+            TrackMouseEvent(&tme);
+            if (g_dragControl == 1) { ApplySizeSliderY(y); return 0; }
+            if (g_dragControl == 2) { ApplyOpacitySliderY(y); return 0; }
+            if (g_dragControl == 3) { ApplyZoomSliderX(x); return 0; }
             if (g.drawing && g.resizeEdge != 0) {
                 SetCursor(LoadCursor(nullptr, g.resizeEdge == 1 ? IDC_SIZEWE : g.resizeEdge == 2 ? IDC_SIZENS : IDC_SIZENWSE));
                 return 0;
+            }
+            UpdateHover(x, y);
+            const RECT canvas = CanvasRect();
+            const ResizeEdge hovEdge = CanvasResizeHit(x, y, canvas);
+            if (hovEdge != ResizeEdge::None) {
+                SetCursor(LoadCursor(nullptr, hovEdge == ResizeEdge::Right ? IDC_SIZEWE : hovEdge == ResizeEdge::Bottom ? IDC_SIZENS : IDC_SIZENWSE));
+            } else if (HitRect(canvas, x, y)) {
+                SetCursor(LoadCursor(nullptr, g.toolKind == PaintToolKind::Text ? IDC_IBEAM : IDC_CROSS));
+            } else {
+                SetCursor(LoadCursor(nullptr, IDC_ARROW));
             }
             const pr::Point p = ToImagePoint(x, y);
             if (p.x != g.cursorX || p.y != g.cursorY) {
@@ -1234,20 +1677,41 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam) 
                 g.cursorY = p.y;
                 InvalidateRect(hwnd, nullptr, FALSE);
             }
-            if (g.drawing && g.tool) g.tool->OnStylusMove(p);
+            if (g.drawing && g.tool) {
+                g.tool->OnStylusMove(p);
+                InvalidateRect(hwnd, nullptr, FALSE);
+            }
             return 0;
         }
+        case WM_MOUSELEAVE:
+            g_hoverCmd = 0;
+            g_hoverShapeIdx = -1;
+            g_hoverPaletteIdx = -1;
+            g_hoverColor1 = g_hoverColor2 = g_hoverEditColors = false;
+            g_hoverStatusPart = 0;
+            InvalidateRect(hwnd, nullptr, FALSE);
+            return 0;
         case WM_MOUSEWHEEL: {
+            const int delta = GET_WHEEL_DELTA_WPARAM(wParam);
             if (GetKeyState(VK_CONTROL) & 0x8000) {
-                const int delta = GET_WHEEL_DELTA_WPARAM(wParam);
                 if (delta > 0) g.zoom = std::min(16, g.zoom * 2);
                 else if (delta < 0) g.zoom = std::max(1, g.zoom / 2);
+                ClampScroll();
                 InvalidateRect(hwnd, nullptr, TRUE);
                 return 0;
             }
-            return DefWindowProcW(hwnd, message, wParam, lParam);
+            if (GetKeyState(VK_SHIFT) & 0x8000) g_scrollX -= delta / 3;
+            else g_scrollY -= delta / 3;
+            ClampScroll();
+            InvalidateRect(hwnd, nullptr, FALSE);
+            return 0;
         }
         case WM_LBUTTONUP: {
+            if (g_dragControl != 0) {
+                g_dragControl = 0;
+                ReleaseCapture();
+                return 0;
+            }
             if (g.drawing && g.resizeEdge != 0) {
                 const int dx = (GET_X_LPARAM(lParam) - g_resizeStartX) / std::max(1, g.zoom);
                 const int dy = (GET_Y_LPARAM(lParam) - g_resizeStartY) / std::max(1, g.zoom);
@@ -1281,6 +1745,13 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam) 
             }
             const RECT canvas = CanvasRect();
             if (x >= canvas.left && x <= canvas.right && y >= canvas.top && y <= canvas.bottom) {
+                const pr::Point p = ToImagePoint(x, y);
+                if (g.toolKind == PaintToolKind::Zoom) {
+                    g.zoom = std::max(1, g.zoom / 2); InvalidateRect(hwnd, nullptr, TRUE); return 0;
+                }
+                if (g.toolKind == PaintToolKind::PickColor && p.x >= 0 && p.y >= 0 && p.x < g.image->width() && p.y < g.image->height()) {
+                    g.background = g.image->GetPixel(p); RebuildTool(); InvalidateRect(hwnd, nullptr, TRUE); return 0;
+                }
                 HMENU menu = CreatePopupMenu();
                 AppendMenuW(menu, MF_STRING, 202, L"Cut");
                 AppendMenuW(menu, MF_STRING, 203, L"Copy");

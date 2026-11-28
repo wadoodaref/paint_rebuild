@@ -588,3 +588,14 @@ consistent Paint 11-like typography.
 
 **Commit:** 3b6a1a7eac0ca080acd9701106558cc3ccca48a4
 
+
+## 2026-11-28 — Session 34 — Paint 11 UI fidelity pass (command bar, sliders, canvas & rulers)
+
+**Request:** "make sure ui faithful copy of ms paint"
+
+**Change:** refined `src/app/main.cpp` to fix layout overlaps and bring the Win32 shell closer to Paint 11's UI and interaction:
+- **Command bar:** computed group separator/label bounds dynamically inside `BuildCommandLayout()`; changed the 23-shape gallery from 7×4 to 8×3 so the bottom row no longer overlaps the `Shapes` label; made `Color 1` and `Color 2` side-by-side selectable rounded swatch buttons (left-click selects active slot, palette clicks update active slot or right-click for Color 2, active swatch highlighted in palette); added labels to `Image` buttons (`Crop` disabled when no selection, `Rotate` and `Flip` dropdown menus); added hover highlights across all command-bar buttons, shapes, and palette swatches; added `MF_CHECKED` indicators to dropdown menus and `View` toggles; streamlined the top menu bar (`File`, `Edit`, `View`, `Image`, `Help`).
+- **Left panel:** made Size and Opacity sliders responsive to window height, draggable with mouse capture, drawn with rounded tracks, blue fill, circular thumbs, and live `Npx` / `N%` readouts, with Opacity wired to `g.tool->SetOpacity()`.
+- **Canvas, rulers & status bar:** centered the canvas in the workspace when smaller than the viewport and added mouse-wheel/Shift+wheel panning when zoomed/larger; moved rulers into a dedicated `kRulerSize` margin outside the canvas so they no longer cover the top-left pixels; added `fit_window.png` / `zoom_in.png` / `zoom_out.png` icons, selection dimensions, and draggable zoom slider to the status bar; added live `OnStylusMove` repainting and context-aware cursors (`IDC_CROSS`, `IDC_IBEAM`, resize handles).
+
+**Verification:** MSVC build 0 warnings/0 errors (both targets); `pr_selftest.exe` 103 checks, 0 FAIL; GUI smoke launched `paintrebuild.exe` (`alive=True`).
