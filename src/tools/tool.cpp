@@ -258,7 +258,8 @@ void CRectTool::DrawShape() {
     const Rect r = NormalizeRect(Rect{start_.x, start_.y, last_.x - start_.x,
                                       last_.y - start_.y});
     pr::DrawShape(context_.image, r, shape_, context_.foreground, filled_,
-                  static_cast<int>(std::max(1u, thickness_)), context_.background);
+                  static_cast<int>(std::max(1u, thickness_)), context_.background,
+                  outlineStyle_, fillStyle_);
 }
 
 void CRectTool::OnStylusDown(const Point& p) {

@@ -342,6 +342,45 @@ static void TestFidelityTools() {
     CHECK(Red(blended) > 120 && Green(blended) > 100);
 }
 
+static void TestShapeBrushStyles() {
+    const Rect r{4, 4, 24, 24};
+    auto solid = Image::Create(Size{32, 32});
+    auto wash = Image::Create(Size{32, 32});
+    DrawShape(*solid, r, ShapeKind::Rectangle, palette::Red(), false, 3, palette::White(),
+              ShapeBrushStyle::Color);
+    DrawShape(*wash, r, ShapeKind::Rectangle, palette::Red(), false, 3, palette::White(),
+              ShapeBrushStyle::Watercolor);
+    CHECK(solid->GetPixel(Point{10, 4}).argb != wash->GetPixel(Point{10, 4}).argb);
+
+    auto none = Image::Create(Size{32, 32});
+    DrawShape(*none, r, ShapeKind::Rectangle, palette::Red(), false, 3, palette::White(),
+              ShapeBrushStyle::None);
+    CHECK(none->GetPixel(Point{10, 4}).argb == palette::White().argb);
+
+    // Coordinate noise is deterministic: two draws must give identical pixels.
+    auto a = Image::Create(Size{32, 32});
+    auto b = Image::Create(Size{32, 32});
+    for (auto* img : {a.get(), b.get()})
+        DrawShape(*img, r, ShapeKind::Ellipse, palette::Blue(), true, 3, palette::Green(),
+                  ShapeBrushStyle::Crayon, ShapeBrushStyle::Marker);
+    bool identical = true;
+    for (int y = 0; y < 32 && identical; ++y)
+        for (int x = 0; x < 32; ++x)
+            if (a->GetPixel(Point{x, y}).argb != b->GetPixel(Point{x, y}).argb) {
+                identical = false;
+                break;
+            }
+    CHECK(identical);
+
+    auto fillSolid = Image::Create(Size{32, 32});
+    auto fillMarker = Image::Create(Size{32, 32});
+    DrawShape(*fillSolid, r, ShapeKind::Rectangle, palette::Red(), true, 0, palette::Green(),
+              ShapeBrushStyle::None, ShapeBrushStyle::Color);
+    DrawShape(*fillMarker, r, ShapeKind::Rectangle, palette::Red(), true, 0, palette::Green(),
+              ShapeBrushStyle::None, ShapeBrushStyle::Marker);
+    CHECK(fillSolid->GetPixel(Point{16, 16}).argb != fillMarker->GetPixel(Point{16, 16}).argb);
+}
+
 int main() {
     CHECK(sizeof(std::uint32_t) == 4);  // Stage 0 harness check
     TestGeometry();
@@ -354,6 +393,7 @@ int main() {
     TestProjectAndClipboard();
     TestShapes();
     TestFidelityTools();
+    TestShapeBrushStyles();
 
     std::printf("pr_selftest: %d checks, %d FAIL\n", g_checks, g_fails);
     return g_fails == 0 ? 0 : 1;

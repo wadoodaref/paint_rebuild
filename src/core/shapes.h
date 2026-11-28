@@ -38,9 +38,25 @@ enum class ShapeKind {
 std::vector<Point> ShapePoints(ShapeKind kind, const Rect& bounds);
 const char* ShapeName(ShapeKind kind);
 
-// Draws an outline (always) and optionally fills the interior. The outline
-// uses Bresenham segments; the fill uses an even-odd scanline rule.
+// REA: PaintUI.ImageToolbarViewModel exposes SetShapeOutline*/SetShapeFill*
+// for None/Color/Crayon/Marker/Oil/NaturalPencil/Watercolour. These are our
+// clean-room rendering counterparts; none of the source assets are copied.
+enum class ShapeBrushStyle {
+    None,
+    Color,
+    Crayon,
+    Marker,
+    Oil,
+    NaturalPencil,
+    Watercolor
+};
+
+// Draws an outline and optionally fills the interior. The outline uses
+// Bresenham segments; the fill uses an even-odd scanline rule. Brush styles
+// use deterministic coordinate noise so undo/redo reproduces exact pixels.
 void DrawShape(Image& image, const Rect& bounds, ShapeKind kind, Color color, bool filled,
-               int thickness = 1, Color fillColor = MakeColor(0, 0, 0, 0));
+               int thickness = 1, Color fillColor = MakeColor(0, 0, 0, 0),
+               ShapeBrushStyle outlineStyle = ShapeBrushStyle::Color,
+               ShapeBrushStyle fillStyle = ShapeBrushStyle::Color);
 
 }  // namespace pr

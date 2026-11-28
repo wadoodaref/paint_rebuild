@@ -9,7 +9,62 @@ namespace {
 
 constexpr double kPi = 3.14159265358979323846;
 
-void AddThickLine(Image& image, Point a, Point b, Color c, int thickness) {
+// Deterministic coordinate noise: the same shape always produces the same
+// pixels, so brush textures remain exactly undoable/redoable.
+unsigned BrushNoise(int x, int y, unsigned seed) {
+    unsigned h = static_cast<unsigned>(x) * 73856093u ^ static_cast<unsigned>(y) * 19349663u ^
+                 seed * 83492791u;
+    h ^= h >> 13;
+    h *= 1274126177u;
+    return h ^ (h >> 16);
+}
+
+void BlendPixel(Image& image, const Point& p, Color c, int alpha) {
+    if (p.x < 0 || p.y < 0 || p.x >= image.width() || p.y >= image.height()) return;
+    alpha = std::clamp(alpha, 0, 255);
+    if (alpha == 255) { image.SetPixel(p, c); return; }
+    const Color old = image.GetPixel(p);
+    if (Alpha(old) == 0) {
+        image.SetPixel(p, MakeColor(Red(c), Green(c), Blue(c), alpha));
+        return;
+    }
+    const unsigned r = (Red(c) * alpha + Red(old) * (255 - alpha)) / 255;
+    const unsigned g = (Green(c) * alpha + Green(old) * (255 - alpha)) / 255;
+    const unsigned b = (Blue(c) * alpha + Blue(old) * (255 - alpha)) / 255;
+    image.SetPixel(p, MakeColor(r, g, b, Alpha(old)));
+}
+
+void BrushPixel(Image& image, const Point& p, Color c, ShapeBrushStyle style) {
+    if (style == ShapeBrushStyle::None) return;
+    const unsigned n = BrushNoise(p.x, p.y, 7u);
+    int alpha = 255;
+    switch (style) {
+        case ShapeBrushStyle::Crayon:
+            if (n % 100 < 28) return;       // wax grain: occasional gaps
+            alpha = 205;
+            break;
+        case ShapeBrushStyle::Marker:
+            alpha = 175;                    // translucent chisel
+            break;
+        case ShapeBrushStyle::Oil:
+            alpha = 200 + static_cast<int>(n % 56);
+            break;
+        case ShapeBrushStyle::NaturalPencil:
+            if (n % 100 < 42) return;       // graphite tooth
+            alpha = 150 + static_cast<int>(n % 50);
+            break;
+        case ShapeBrushStyle::Watercolor:
+            alpha = 80 + static_cast<int>(n % 60);  // translucent wash
+            break;
+        default:
+            break;
+    }
+    BlendPixel(image, p, c, alpha);
+}
+
+void AddThickLine(Image& image, Point a, Point b, Color c, int thickness,
+                  ShapeBrushStyle style = ShapeBrushStyle::Color) {
+    if (style == ShapeBrushStyle::None) return;
     const int radius = std::max(0, (thickness - 1) / 2);
     int x0 = a.x;
     int y0 = a.y;
@@ -20,12 +75,16 @@ void AddThickLine(Image& image, Point a, Point b, Color c, int thickness) {
     int err = dx + dy;
     for (;;) {
         if (radius == 0) {
-            image.SetPixel(Point{x0, y0}, c);
+            BrushPixel(image, Point{x0, y0}, c, style);
         } else {
-            for (int oy = -radius; oy <= radius; ++oy)
-                for (int ox = -radius; ox <= radius; ++ox)
-                    if (ox * ox + oy * oy <= radius * radius + radius)
-                        image.SetPixel(Point{x0 + ox, y0 + oy}, c);
+            for (int oy = -radius; oy <= radius; ++oy) {
+                // Marker uses a flat chisel nib instead of a round brush.
+                if (style == ShapeBrushStyle::Marker && std::abs(oy) > (radius + 1) / 2) continue;
+                for (int ox = -radius; ox <= radius; ++ox) {
+                    if (ox * ox + oy * oy > radius * radius + radius) continue;
+                    BrushPixel(image, Point{x0 + ox, y0 + oy}, c, style);
+                }
+            }
         }
         if (x0 == b.x && y0 == b.y) break;
         const int e2 = 2 * err;
@@ -192,7 +251,8 @@ const char* ShapeName(ShapeKind kind) {
 }
 
 void DrawShape(Image& image, const Rect& bounds, ShapeKind kind, Color color, bool filled,
-               int thickness, Color fillColor) {
+               int thickness, Color fillColor, ShapeBrushStyle outlineStyle,
+               ShapeBrushStyle fillStyle) {
     const auto points = ShapePoints(kind, bounds);
     if (points.empty()) return;
     const Color interior = (Alpha(fillColor) == 0 && Red(fillColor) == 0 &&
@@ -219,13 +279,18 @@ void DrawShape(Image& image, const Rect& bounds, ShapeKind kind, Color color, bo
             for (std::size_t i = 0; i + 1 < crossings.size(); i += 2) {
                 const int from = static_cast<int>(std::ceil(crossings[i] - 0.5));
                 const int to = static_cast<int>(std::floor(crossings[i + 1] + 0.5));
-                for (int x = from; x <= to; ++x) image.SetPixel(Point{x, y}, interior);
+                for (int x = from; x <= to; ++x) {
+                    if (fillStyle == ShapeBrushStyle::None) continue;
+                    if (fillStyle == ShapeBrushStyle::Color) image.SetPixel(Point{x, y}, interior);
+                    else BrushPixel(image, Point{x, y}, interior, fillStyle);
+                }
             }
         }
     }
-    if (thickness > 0) {
+    if (thickness > 0 && outlineStyle != ShapeBrushStyle::None) {
         for (std::size_t i = 0; i < points.size(); ++i)
-            AddThickLine(image, points[i], points[(i + 1) % points.size()], color, thickness);
+            AddThickLine(image, points[i], points[(i + 1) % points.size()], color, thickness,
+                         outlineStyle);
     }
 }
 

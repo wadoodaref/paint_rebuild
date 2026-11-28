@@ -80,6 +80,9 @@ public:
     virtual void OnStylusMove(const Point& p) = 0;
     virtual void OnStylusUp(const Point& p) = 0;
     virtual void OnKeyDown(unsigned /*virtualKey*/) {}
+    // REA: shape outline/fill brush styles (None/Color/Crayon/Marker/Oil/
+    // NaturalPencil/Watercolour). Only shape tools override this.
+    virtual void SetShapeStyles(ShapeBrushStyle /*outline*/, ShapeBrushStyle /*fill*/) {}
     virtual void OnCancel();
     virtual void OnClear() {}
     virtual void StartPreview() { previewing_ = true; }
@@ -185,6 +188,10 @@ public:
     CRectTool(ToolContext& context, PaintToolKind kind, bool filled,
               ShapeKind shape = ShapeKind::Rectangle);
     void SetShape(ShapeKind shape) { shape_ = shape; }
+    void SetShapeStyles(ShapeBrushStyle outline, ShapeBrushStyle fill) override {
+        outlineStyle_ = outline;
+        fillStyle_ = fill;
+    }
     void OnStylusDown(const Point& p) override;
     void OnStylusMove(const Point& p) override;
     void OnStylusUp(const Point& p) override;
@@ -192,6 +199,8 @@ public:
 private:
     bool filled_;
     ShapeKind shape_ = ShapeKind::Rectangle;
+    ShapeBrushStyle outlineStyle_ = ShapeBrushStyle::Color;
+    ShapeBrushStyle fillStyle_ = ShapeBrushStyle::Color;
     void DrawShape();
 };
 

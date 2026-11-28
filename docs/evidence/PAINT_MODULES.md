@@ -187,9 +187,12 @@ commands were added to the Select dropdown.
   present in the vendored bundle.
 - Exact palette RGB literals remain unavailable from artifacts (previous
   unknown, unchanged).
-- Outline/fill brush-style commands (Crayon/Marker/Oil/NaturalPencil/
-  Watercolour) are not exposed; our shape outline/fill supports only none/
-  solid colour and a thickness.
+
+**Closed in Session 39:** shape outline/fill brush styles. `ShapeBrushStyle`
+and deterministic coordinate-noise rendering implement None/Color/Crayon/
+Marker/Oil/NaturalPencil/Watercolour for both outline and interior, exposed in
+the Outline/Fill dropdowns. This is a clean-room interpretation of the
+metadata command names; the exact CIL rendering algorithms were not inspected.
 
 **Closed in Session 38:** `RotateCustomDialogViewModel.RotationAngle` now has an
 equivalent — "Custom rotate..." opens a signed-angle dialog with optional

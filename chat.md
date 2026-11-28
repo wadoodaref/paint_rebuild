@@ -672,6 +672,32 @@ through the GUI (no headless dialog harness exists); this is a known limit.
 
 **Commit:** f6769bf (after log-amend; pre-amend hash 84d61f4)
 
+## 2026-11-28 - Session 39 - Shape outline/fill brush styles from REA contract
+
+**Request:** "proceed" (next REA-driven fidelity tranche).
+
+**Evidence:** `ev_ffbc7e541f699b0558b50d31a48024ae87108aa05b337c4e3939326cefa6a9e6`
+— `ImageToolbarViewModel` exposes `SetShapeOutline*` / `SetShapeFill*` for
+None, Color, Crayon, Marker, Oil, NaturalPencil and Watercolour, with
+`BeginPreview*`/`EndPreview*`.
+
+**Change:** added `ShapeBrushStyle` (`src/core/shapes.h`) and deterministic
+coordinate-noise brush rendering in `src/core/shapes.cpp` (grain gaps for
+crayon/graphite, translucent chisel for marker, soft alpha for oil, wash for
+watercolour). `DrawShape` now accepts outline/fill styles; `CPaintTool`
+gained a virtual `SetShapeStyles` hook implemented by `CRectTool`, applied by
+`RebuildTool()` for every shape tool. The Outline and Fill dropdowns in
+`src/app/main.cpp` now expose all seven REA-observed styles (plus the existing
+thickness/no-fill choices), with checked state. Removed dead `kPalette`
+constants and guarded the MSVC-only `#pragma comment` so the MinGW build is
+warning-free. Added `TestShapeBrushStyles()` headless checks for style
+differences, no-outline behaviour, deterministic pixels and fill blending.
+
+**Verification:** MinGW-w64 build 0 warnings / 0 errors; `pr_selftest.exe` 117
+checks, 0 FAIL; GUI smoke launched `PaintRebuild - Untitled` (`alive=True`).
+
+**Commit:** ddad7ca
+
 ## 2026-11-28 - Log correction - commit hashes after --amend
 
 The hashes recorded for Sessions 36-38 were corrected to the final pushed

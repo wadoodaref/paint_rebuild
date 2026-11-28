@@ -16,8 +16,9 @@ push).
   approximation of Paint 11's workflow, *not* a pixel/control-level copy. REA
   evidence for the source UI contract is in `docs/evidence/PAINT_MODULES.md`
   (UI fidelity audit section). Icons now load and labels are not truncated;
-  remaining gaps: WinUI3 visuals, exact palette RGBs, and outline/fill brush
-  styles. Custom rotate now accepts an arbitrary angle (Session 38).
+  remaining gaps: WinUI3 visuals and exact palette RGBs. Custom rotate accepts
+  an arbitrary angle (Session 38) and shape outline/fill brush styles are
+  implemented (Session 39).
 - Stages 0–8 DONE and verified, plus UI & module fidelity passes: scaffold,
   rules v7, REA evidence map, core `Image`/attributes/geometry, 20 auto-shapes
   (including `RightTriangle`), operation stock with undo/redo, full
@@ -27,7 +28,7 @@ push).
   clipboard, Paint 11 Win32 shell (dynamic command bar, 8×3 shape gallery,
   selectable Color 1/2, responsive draggable Size/Opacity/Zoom sliders,
   margin rulers, centered/pannable canvas), modal `Segoe UI` dialogs, and
-  autorecovery. `pr_selftest.exe`: 113 checks, 0 FAIL.
+  autorecovery. `pr_selftest.exe`: 117 checks, 0 FAIL.
 - Explicitly out of scope by user instruction: copied licence/NOTICE files and
   cloud/AI/provenance/telemetry modules (observed in REA, never implemented).
 - MSVC 14.44 auto-detected from

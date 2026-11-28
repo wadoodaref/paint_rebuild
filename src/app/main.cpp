@@ -112,6 +112,8 @@ struct AppState {
 AppState g;
 ShapeKind g_shapeKind = ShapeKind::Rectangle;
 bool g_shapeFilled = false;
+ShapeBrushStyle g_outlineStyle = ShapeBrushStyle::Color;
+ShapeBrushStyle g_fillStyle = ShapeBrushStyle::Color;
 int g_resizeOrigW = 0, g_resizeOrigH = 0, g_resizeStartX = 0, g_resizeStartY = 0;
 
 void WholeImageOperation(OperationKind kind, const std::function<void(Image&)>& mutate);
@@ -157,9 +159,6 @@ const std::array<PaintToolKind, 18> kTools = {
     PaintToolKind::Rectangle, PaintToolKind::Ellipse,
     PaintToolKind::RoundedRectangle, PaintToolKind::Inactive};
 
-const Color* kPalette = palette::BasicColors;
-constexpr std::size_t kPaletteCount = 28;
-
 void RebuildTool() {
     g.context = std::make_unique<ToolContext>(*g.image, g.stock, g.attributes,
                                               g.foreground, g.background);
@@ -172,6 +171,7 @@ void RebuildTool() {
         double tolerance = 0.0;
         if (g.attributes.GetValue(2, tolerance)) g.tool->SetTolerance(tolerance);
         g.tool->SetOpacity(g_opacityPercent / 100.0);
+        g.tool->SetShapeStyles(g_outlineStyle, g_fillStyle);
     }
 }
 
@@ -1249,18 +1249,32 @@ void DoCommand(WORD id) {
         int curT = 1; g.attributes.GetValue(1, curT);
         HMENU m = CreatePopupMenu();
         AppendMenuW(m, MF_STRING | (curT == 0 ? MF_CHECKED : 0), 9201, L"No outline");
-        AppendMenuW(m, MF_STRING | (curT > 0 ? MF_CHECKED : 0), 9202, L"Solid color");
+        AppendMenuW(m, MF_STRING | (curT > 0 && g_outlineStyle == ShapeBrushStyle::Color ? MF_CHECKED : 0),
+                    9202, L"Solid color");
         AppendMenuW(m, MF_SEPARATOR, 0, nullptr);
         AppendMenuW(m, MF_STRING | (curT == 1 ? MF_CHECKED : 0), 9203, L"1px");
         AppendMenuW(m, MF_STRING | (curT == 3 ? MF_CHECKED : 0), 9204, L"3px");
         AppendMenuW(m, MF_STRING | (curT == 5 ? MF_CHECKED : 0), 9205, L"5px");
         AppendMenuW(m, MF_STRING | (curT == 8 ? MF_CHECKED : 0), 9206, L"8px");
+        // REA: ImageToolbarViewModel SetShapeOutline* styles (ev_ffbc7e54...).
+        AppendMenuW(m, MF_SEPARATOR, 0, nullptr);
+        static const wchar_t* outlineStyles[] = {L"Crayon", L"Marker", L"Oil brush",
+                                                  L"Natural pencil", L"Watercolour"};
+        for (int i = 0; i < 5; ++i)
+            AppendMenuW(m, MF_STRING | (g_outlineStyle == static_cast<ShapeBrushStyle>(i + 2) ? MF_CHECKED : 0),
+                        9231 + i, outlineStyles[i]);
         POINT pt; GetCursorPos(&pt);
         int sel = TrackPopupMenuEx(m, TPM_RETURNCMD | TPM_LEFTALIGN | TPM_TOPALIGN, pt.x, pt.y, g.hwnd, nullptr);
         DestroyMenu(m);
-        if (sel == 9201 || sel == 9202 || sel == 9203 || sel == 9204 || sel == 9205 || sel == 9206) {
-            int t = sel == 9201 ? 0 : sel == 9203 ? 1 : sel == 9204 ? 3 : sel == 9205 ? 5 : 8;
+        if (sel == 9201 || sel == 9202 || (sel >= 9203 && sel <= 9206) ||
+            (sel >= 9231 && sel <= 9235)) {
+            int t = sel == 9201 ? 0 : (curT > 0 ? curT : 1);
+            if (sel >= 9203 && sel <= 9206) t = sel == 9203 ? 1 : sel == 9204 ? 3 : sel == 9205 ? 5 : 8;
+            if (sel == 9202) g_outlineStyle = ShapeBrushStyle::Color;
+            if (sel >= 9231 && sel <= 9235)
+                g_outlineStyle = static_cast<ShapeBrushStyle>(sel - 9229);
             g.attributes.SetValue(1, t); if (g.tool) g.tool->SetThickness(static_cast<unsigned>(t));
+            RebuildTool();
             InvalidateRect(g.hwnd, nullptr, TRUE);
         }
         return;
@@ -1268,12 +1282,25 @@ void DoCommand(WORD id) {
     if (id == 9002) {
         HMENU m = CreatePopupMenu();
         AppendMenuW(m, MF_STRING | (!g_shapeFilled ? MF_CHECKED : 0), 9211, L"No fill");
-        AppendMenuW(m, MF_STRING | (g_shapeFilled ? MF_CHECKED : 0), 9212, L"Solid color");
+        AppendMenuW(m, MF_STRING | (g_shapeFilled && g_fillStyle == ShapeBrushStyle::Color ? MF_CHECKED : 0),
+                    9212, L"Solid color");
+        AppendMenuW(m, MF_SEPARATOR, 0, nullptr);
+        static const wchar_t* fillStyles[] = {L"Crayon", L"Marker", L"Oil brush",
+                                              L"Natural pencil", L"Watercolour"};
+        for (int i = 0; i < 5; ++i)
+            AppendMenuW(m, MF_STRING | (g_shapeFilled && g_fillStyle == static_cast<ShapeBrushStyle>(i + 2) ? MF_CHECKED : 0),
+                        9241 + i, fillStyles[i]);
         POINT pt; GetCursorPos(&pt);
         int sel = TrackPopupMenuEx(m, TPM_RETURNCMD | TPM_LEFTALIGN | TPM_TOPALIGN, pt.x, pt.y, g.hwnd, nullptr);
         DestroyMenu(m);
         if (sel == 9211) { g_shapeFilled = false; RebuildTool(); InvalidateRect(g.hwnd, nullptr, TRUE); }
-        if (sel == 9212) { g_shapeFilled = true; RebuildTool(); InvalidateRect(g.hwnd, nullptr, TRUE); }
+        if (sel == 9212 || (sel >= 9241 && sel <= 9245)) {
+            g_shapeFilled = true;
+            if (sel == 9212) g_fillStyle = ShapeBrushStyle::Color;
+            else g_fillStyle = static_cast<ShapeBrushStyle>(sel - 9239);
+            RebuildTool();
+            InvalidateRect(g.hwnd, nullptr, TRUE);
+        }
         return;
     }
     if (id == 9004) {

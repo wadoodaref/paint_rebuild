@@ -10,7 +10,9 @@
 #include "../core/codec.h"
 #include "icons.h"
 
+#ifdef _MSC_VER
 #pragma comment(lib, "msimg32.lib")
+#endif
 
 namespace pr {
 namespace {
