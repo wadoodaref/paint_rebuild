@@ -348,12 +348,20 @@ void DrawCanvas(HDC hdc, const RECT& canvas) {
                    g.tool->Kind() == PaintToolKind::FreeFormSelection)) {
         const Rect r = g.tool->SelectionRect();
         if (r.w > 0 && r.h > 0) {
-            HPEN dash = CreatePen(PS_DASH, 1, RGB(0, 0, 0));
-            const HPEN old = static_cast<HPEN>(SelectObject(hdc, dash));
             const int left = canvas.left + r.x * g.zoom;
             const int top = canvas.top + r.y * g.zoom;
-            Rectangle(hdc, left, top, left + r.w * g.zoom, top + r.h * g.zoom);
-            SelectObject(hdc, old);
+            const int right = left + r.w * g.zoom;
+            const int bottom = top + r.h * g.zoom;
+            HGDIOBJ oldBr = SelectObject(hdc, GetStockObject(NULL_BRUSH));
+            HPEN wpen = CreatePen(PS_SOLID, 1, RGB(255, 255, 255));
+            HGDIOBJ oldPen = SelectObject(hdc, wpen);
+            Rectangle(hdc, left, top, right, bottom);
+            HPEN dash = CreatePen(PS_DASH, 1, ui_theme::kSliderFill);
+            SelectObject(hdc, dash);
+            Rectangle(hdc, left, top, right, bottom);
+            SelectObject(hdc, oldPen);
+            SelectObject(hdc, oldBr);
+            DeleteObject(wpen);
             DeleteObject(dash);
         }
     }
@@ -393,7 +401,7 @@ static void DrawCmdBtn(HDC hdc, const RECT& r, const char* icon, const wchar_t* 
         if (Image* img = GetIcon(icon)) {
             if (compactHoriz) {
                 const int isz = 16;
-                DrawToolIcon(hdc, *img, r.left + 6, r.top + (bh - isz) / 2, isz);
+                DrawToolIcon(hdc, *img, r.left + 5, r.top + (bh - isz) / 2, isz);
             } else {
                 const int isz = iconOnly ? 20 : 24;
                 const int ix = r.left + (bw - isz) / 2;
@@ -406,7 +414,7 @@ static void DrawCmdBtn(HDC hdc, const RECT& r, const char* icon, const wchar_t* 
         SetBkMode(hdc, TRANSPARENT);
         SetTextColor(hdc, enabled ? ui_theme::kTextPrimary : ui_theme::kDisabledText);
         if (compactHoriz) {
-            RECT tr{r.left + 20, r.top, r.right - (dropdown ? 7 : 4), r.bottom};
+            RECT tr{r.left + 24, r.top, r.right - (dropdown ? 11 : 4), r.bottom};
             DrawTextW(hdc, label, -1, &tr, DT_LEFT | DT_SINGLELINE | DT_VCENTER);
         } else {
             RECT tr{r.left + 2, r.top + 38, r.right - 2, r.bottom - 4};
@@ -414,11 +422,12 @@ static void DrawCmdBtn(HDC hdc, const RECT& r, const char* icon, const wchar_t* 
         }
     }
     if (dropdown) {
-        const int cx = compactHoriz ? (r.right - 8) : (r.right - 8);
+        const int cx = r.right - 8;
         const int cy = compactHoriz ? (r.top + bh / 2) : (r.top + 52);
         POINT pts[3] = {{cx - 3, cy - 1}, {cx + 3, cy - 1}, {cx, cy + 2}};
-        HBRUSH ar = CreateSolidBrush(enabled ? RGB(80, 80, 80) : RGB(160, 160, 160));
-        HPEN ap = CreatePen(PS_SOLID, 1, enabled ? RGB(80, 80, 80) : RGB(160, 160, 160));
+        const COLORREF arrowCol = enabled ? ui_theme::kGroupText : ui_theme::kDisabledText;
+        HBRUSH ar = CreateSolidBrush(arrowCol);
+        HPEN ap = CreatePen(PS_SOLID, 1, arrowCol);
         HGDIOBJ oa = SelectObject(hdc, ar);
         HGDIOBJ op = SelectObject(hdc, ap);
         Polygon(hdc, pts, 3);
@@ -494,7 +503,10 @@ CommandLayout BuildCommandLayout() {
                               g.toolKind == PaintToolKind::Marker ||
                               g.toolKind == PaintToolKind::Crayon ||
                               g.toolKind == PaintToolKind::NaturalPencil);
-    addBtn(x + 6, top + 4, 76, 72, 807, L"Brushes", "brush.png", brushActive, true);
+    const char* brushIcon = (g.toolKind == PaintToolKind::Airbrush) ? "airbrush.png"
+                          : (g.toolKind == PaintToolKind::Calligraphic) ? "calligraphy.png"
+                          : "brush.png";
+    addBtn(x + 6, top + 4, 76, 72, 807, L"Brushes", brushIcon, brushActive, true);
     x += 84;
     L.groups.push_back({L"Brushes", brushLeft, x});
     x += 6;
@@ -544,8 +556,12 @@ CommandLayout BuildCommandLayout() {
     x += 192;
     int outlineThickness = 1;
     g.attributes.GetValue(1, outlineThickness);
-    addBtn(x + 2, top + 4, 72, 34, 9001, L"Outline", "shape_outline.png", outlineThickness > 0, true);
-    addBtn(x + 2, top + 42, 72, 34, 9002, L"Fill", "shape_fill.png", g_shapeFilled, true);
+    addBtn(x + 2, top + 4, 72, 34, 9001, L"Outline",
+           outlineThickness > 0 ? "shape_outline.png" : "shape_nofill.png",
+           outlineThickness > 0, true);
+    addBtn(x + 2, top + 42, 72, 34, 9002, L"Fill",
+           g_shapeFilled ? "shape_fill.png" : "shape_nofill.png",
+           g_shapeFilled, true);
     x += 78;
     L.groups.push_back({L"Shapes", shapesLeft, x});
     x += 6;

@@ -749,3 +749,14 @@ icon-bearing clipboard menu render correctly.
 The hashes recorded for Sessions 36-38 were corrected to the final pushed
 hashes; the amend step changed each commit ID after the log entry was written.
 No source changes in this entry (self-referential; its own hash is in git log).
+
+## 2026-11-28 — Session 42 — Selection marquee, dynamic Paint icons, and theme token alignment
+
+**Request:** "pull, read .md files and proceed to make ui copy of paint same icons and styles"
+
+**Change:** refined `src/app/main.cpp` after pulling `origin/main` (`9b8d97c`):
+- **Selection marquee (`DrawCanvas`):** added `NULL_BRUSH` before drawing the selection `Rectangle()` (fixing solid white fill over selected canvas pixels) and rendered a two-pass white + `ui_theme::kSliderFill` dashed marquee.
+- **Dynamic Paint 11 icons (`BuildCommandLayout`):** wired `airbrush.png` / `calligraphy.png` / `brush.png` to the active brush tool and `shape_nofill.png` when Outline is `No outline` or Fill is `No fill`.
+- **Style & spacing (`DrawCmdBtn`):** shifted compact horizontal button text to `r.left + 24` so it no longer overlaps the 16px icon, and replaced the remaining hardcoded chevron RGBs with `ui_theme::kGroupText` / `ui_theme::kDisabledText`.
+
+**Verification:** MSVC build 0 warnings/0 errors (both targets); `pr_selftest.exe` 117 checks, 0 FAIL; GUI smoke launched `paintrebuild.exe` (`alive=True`).
